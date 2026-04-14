@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
 import { PanGestureHandler, State } from "react-native-gesture-handler";
+import TaskReschedulePicker from "../components/TaskReschedulePicker";
 import { formatDateKey, parseDateKey, parseSelectedDate } from "./date-utils";
 import { useTaskActions, useTasks } from "./task-context";
-import TaskReschedulePicker from "./task-reschedule-picker";
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -59,6 +59,15 @@ export default function Today() {
       .filter((task) => task.dueDate === selectedDateKey)
       .sort((a, b) => Number(a.completed) - Number(b.completed));
   }, [tasks, selectedDateKey]);
+
+  const pendingTaskCounts = useMemo(() => {
+    return tasks.reduce<Record<string, number>>((counts, task) => {
+      if (!task.completed) {
+        counts[task.dueDate] = (counts[task.dueDate] ?? 0) + 1;
+      }
+      return counts;
+    }, {});
+  }, [tasks]);
 
   const pushToTomorrow = (taskId: string) => {
     const tomorrow = new Date(selectedDate);
@@ -174,6 +183,9 @@ export default function Today() {
               <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>
                 {date.getDate()}
               </Text>
+              {pendingTaskCounts[formatDateKey(date)] > 0 ? (
+                <Text style={styles.pendingCount}>{pendingTaskCounts[formatDateKey(date)]}</Text>
+              ) : null}
             </Pressable>
           );
         })}
@@ -383,6 +395,12 @@ const styles = StyleSheet.create({
   },
   dayNumberSelected: {
     color: "#0F172A",
+  },
+  pendingCount: {
+    color: "#E2E8F0",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 6,
   },
   sectionTitle: {
     color: "#E2E8F0",

@@ -3,9 +3,9 @@ import { useMemo, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
 import { GestureHandlerRootView, PanGestureHandler, State } from "react-native-gesture-handler";
+import TaskReschedulePicker from "../components/TaskReschedulePicker";
 import { formatDateKey, parseDateKey } from "./date-utils";
 import { useTaskActions, useTasks } from "./task-context";
-import TaskReschedulePicker from "./task-reschedule-picker";
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const monthNames = [
