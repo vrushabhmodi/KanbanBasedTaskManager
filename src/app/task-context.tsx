@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type Task = {
   id: string;
@@ -8,19 +9,19 @@ type Task = {
   completed: boolean;
 };
 
+import { formatDateKey } from "./date-utils";
+
 type TaskContextType = {
   tasks: Task[];
   addTask: (task: Omit<Task, "id" | "completed">) => void;
   updateTask: (taskId: string, changes: Partial<Omit<Task, "id" | "completed">>) => void;
   toggleTaskCompleted: (taskId: string) => void;
   setTaskDueDate: (taskId: string, dueDate: string) => void;
+  deleteTask: (taskId: string) => void;
 };
 
 const TaskContext = createContext<TaskContextType | null>(null);
-
-function formatDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
+const TASKS_STORAGE_KEY = "KBTM_TASKS";
 
 const initialTasks: Task[] = [
   {
@@ -48,6 +49,33 @@ const initialTasks: Task[] = [
 
 export function TaskProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    async function loadTasks() {
+      try {
+        const savedValue = await AsyncStorage.getItem(TASKS_STORAGE_KEY);
+        if (savedValue) {
+          const savedTasks = JSON.parse(savedValue) as Task[];
+          setTasks(savedTasks);
+        }
+      } catch (error) {
+        console.warn("Failed to load tasks from storage", error);
+      } finally {
+        setIsReady(true);
+      }
+    }
+
+    loadTasks();
+  }, []);
+
+  useEffect(() => {
+    if (!isReady) return;
+
+    AsyncStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks)).catch((error) => {
+      console.warn("Failed to save tasks to storage", error);
+    });
+  }, [tasks, isReady]);
 
   const addTask = (task: Omit<Task, "id" | "completed">) => {
     setTasks((prevTasks) => [
@@ -84,8 +112,12 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const deleteTask = (taskId: string) => {
+    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+  };
+
   const value = useMemo(
-    () => ({ tasks, addTask, updateTask, toggleTaskCompleted, setTaskDueDate }),
+    () => ({ tasks, addTask, updateTask, toggleTaskCompleted, setTaskDueDate, deleteTask }),
     [tasks]
   );
 
@@ -110,5 +142,6 @@ export function useTaskActions() {
     updateTask: context.updateTask,
     toggleTaskCompleted: context.toggleTaskCompleted,
     setTaskDueDate: context.setTaskDueDate,
+    deleteTask: context.deleteTask,
   };
 }

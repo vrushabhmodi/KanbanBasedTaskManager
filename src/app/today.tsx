@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { formatDateKey, parseSelectedDate } from "./date-utils";
 import { useTaskActions, useTasks } from "./task-context";
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -25,20 +26,9 @@ function getWeekDays(referenceDate: Date) {
   });
 }
 
-function formatDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function parseSelectedDate(dateParam: string | string[] | undefined) {
-  if (!dateParam) return null;
-  const dateString = Array.isArray(dateParam) ? dateParam[0] : dateParam;
-  const parsed = new Date(dateString);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 export default function Today() {
   const { tasks } = useTasks();
-  const { toggleTaskCompleted, setTaskDueDate, updateTask } = useTaskActions();
+  const { toggleTaskCompleted, setTaskDueDate, updateTask, deleteTask } = useTaskActions();
   const searchParams = useLocalSearchParams();
   const today = useMemo(() => new Date(), []);
   const initialDate = useMemo(() => parseSelectedDate(searchParams.date) ?? today, [searchParams.date, today]);
@@ -207,6 +197,33 @@ export default function Today() {
               <Pressable
                 style={[
                   styles.actionButton,
+                  styles.deleteButton,
+                ]}
+                onPress={() => {
+                  const task = selectedTask;
+                  if (!task) return;
+                  Alert.alert(
+                    "Delete task",
+                    `Are you sure you want to delete "${task.title}"?`,
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: () => {
+                          deleteTask(task.id);
+                          closeTaskModal();
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <MaterialCommunityIcons name="close" size={20} color="#FFFFFF" />
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.actionButton,
                   selectedTask?.completed ? styles.undoneButton : styles.doneButton,
                 ]}
                 onPress={() => {
@@ -363,6 +380,9 @@ const styles = StyleSheet.create({
   },
   doneButton: {
     backgroundColor: "#10B981",
+  },
+  deleteButton: {
+    backgroundColor: "#DC2626",
   },
   doneButtonText: {
     color: "#FFFFFF",

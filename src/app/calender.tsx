@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
 import { GestureHandlerRootView, PanGestureHandler, State } from "react-native-gesture-handler";
+import { formatDateKey } from "./date-utils";
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const monthNames = [
@@ -51,7 +52,7 @@ export default function Calender() {
   };
 
   const handleSelectDate = (date: Date) => {
-    router.push({ pathname: "/today", params: { date: date.toISOString() } });
+    router.push({ pathname: "/today", params: { date: formatDateKey(date) } });
   };
 
   const handleSwipe = ({ nativeEvent }: PanGestureHandlerGestureEvent) => {

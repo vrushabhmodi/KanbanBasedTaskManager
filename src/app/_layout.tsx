@@ -3,6 +3,7 @@ import { Tabs } from "expo-router";
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { formatDateKey } from "./date-utils";
 import { TaskProvider, useTaskActions } from "./task-context";
 
 const tabBarColors = {
@@ -11,10 +12,6 @@ const tabBarColors = {
   background: "#0F172A",
   border: "#334155",
 };
-
-function formatDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
 
 function CreateTaskModal({
   visible,
