@@ -128,7 +128,16 @@ export default function RootLayout() {
               },
             })}
           >
-            <Tabs.Screen name="today" options={{ title: "Today" }} />
+            <Tabs.Screen
+              name="today"
+              options={{ title: "Today" }}
+              listeners={({ navigation }) => ({
+                tabPress: (event) => {
+                  event.preventDefault();
+                  navigation.navigate("today", { date: formatDateKey(new Date()) });
+                },
+              })}
+            />
             <Tabs.Screen name="calender" options={{ title: "Calendar" }} />
           </Tabs>
 

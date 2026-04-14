@@ -1,7 +1,9 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
+import { PanGestureHandler, State } from "react-native-gesture-handler";
 import { formatDateKey, parseSelectedDate } from "./date-utils";
 import { useTaskActions, useTasks } from "./task-context";
 
@@ -27,12 +29,14 @@ function getWeekDays(referenceDate: Date) {
 }
 
 export default function Today() {
+  const router = useRouter();
   const { tasks } = useTasks();
   const { toggleTaskCompleted, setTaskDueDate, updateTask, deleteTask } = useTaskActions();
   const searchParams = useLocalSearchParams();
   const today = useMemo(() => new Date(), []);
   const initialDate = useMemo(() => parseSelectedDate(searchParams.date) ?? today, [searchParams.date, today]);
   const [selectedDate, setSelectedDate] = useState(initialDate);
+  const selectedDateRef = useRef(initialDate);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDetails, setEditDetails] = useState("");
@@ -40,10 +44,11 @@ export default function Today() {
 
   useEffect(() => {
     const routedDate = parseSelectedDate(searchParams.date);
-    if (routedDate && routedDate.getTime() !== selectedDate.getTime()) {
+    if (routedDate && routedDate.getTime() !== selectedDateRef.current.getTime()) {
       setSelectedDate(routedDate);
+      selectedDateRef.current = routedDate;
     }
-  }, [searchParams.date, selectedDate]);
+  }, [searchParams.date]);
 
   const selectedDateKey = formatDateKey(selectedDate);
   const tasksForSelectedDate = useMemo(() => {
@@ -93,12 +98,39 @@ export default function Today() {
     setSelectedTask({ ...selectedTask, details: value || undefined });
   };
 
+  const changeWeek = (offset: number) => {
+    const nextDate = new Date(selectedDate);
+    nextDate.setDate(nextDate.getDate() + offset * 7);
+    const nextDateKey = formatDateKey(nextDate);
+    setSelectedDate(nextDate);
+    selectedDateRef.current = nextDate;
+    router.replace({ pathname: "/today", params: { date: nextDateKey } });
+  };
+
+  const handleSelectDate = (date: Date) => {
+    const dateKey = formatDateKey(date);
+    setSelectedDate(date);
+    selectedDateRef.current = date;
+    router.replace({ pathname: "/today", params: { date: dateKey } });
+  };
+
+  const handleWeekSwipe = ({ nativeEvent }: PanGestureHandlerGestureEvent) => {
+    if (nativeEvent.state !== State.END) return;
+
+    const { translationX, translationY } = nativeEvent;
+    const isHorizontalSwipe = Math.abs(translationX) > Math.abs(translationY) && Math.abs(translationX) > 50;
+    if (!isHorizontalSwipe) return;
+
+    changeWeek(translationX < 0 ? 1 : -1);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>Today</Text>
 
-      <View style={styles.weekContainer}>
-        {weekDays.map((date) => {
+      <PanGestureHandler onHandlerStateChange={handleWeekSwipe} activeOffsetX={[-10, 10]} failOffsetY={[-10, 10]}>
+        <View style={styles.weekContainer}>
+          {weekDays.map((date) => {
           const isSelected =
             date.getFullYear() === selectedDate.getFullYear() &&
             date.getMonth() === selectedDate.getMonth() &&
@@ -108,7 +140,7 @@ export default function Today() {
             <Pressable
               key={date.toISOString()}
               style={[styles.dayCard, isSelected && styles.dayCardSelected]}
-              onPress={() => setSelectedDate(date)}
+              onPress={() => handleSelectDate(date)}
             >
               <Text style={[styles.dayName, isSelected && styles.dayNameSelected]}>
                 {dayNames[date.getDay()]}
@@ -120,6 +152,7 @@ export default function Today() {
           );
         })}
       </View>
+      </PanGestureHandler>
 
       <Text style={styles.sectionTitle}>Tasks</Text>
       <ScrollView
