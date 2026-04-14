@@ -63,6 +63,15 @@ export default function Calender() {
       .sort((a, b) => Number(a.completed) - Number(b.completed));
   }, [tasks, selectedDateKey]);
 
+  const pendingTaskCounts = useMemo(() => {
+    return tasks.reduce<Record<string, number>>((counts, task) => {
+      if (!task.completed) {
+        counts[task.dueDate] = (counts[task.dueDate] ?? 0) + 1;
+      }
+      return counts;
+    }, {});
+  }, [tasks]);
+
   const selectedDateLabel = `${selectedDate.toLocaleString("default", { weekday: "short" })}, ${selectedDate.toLocaleString("default", { month: "short" })} ${selectedDate.getDate()}`;
 
   const gridDates = useMemo(() => getGridDates(currentMonth), [currentMonth]);
@@ -189,6 +198,9 @@ export default function Calender() {
               <Text style={[styles.dateText, isCurrentMonth ? null : styles.dateTextFaded, isToday ? styles.todayText : null]}>
                 {date.getDate()}
               </Text>
+              {pendingTaskCounts[formatDateKey(date)] > 0 ? (
+                <Text style={styles.pendingCount}>{pendingTaskCounts[formatDateKey(date)]}</Text>
+              ) : null}
             </Pressable>
           );
         })}
@@ -247,18 +259,6 @@ export default function Calender() {
                   <MaterialCommunityIcons name="calendar" size={18} color="#F8FAFC" />
                 </Pressable>
               )}
-              {selectedTask && !selectedTask.completed && (
-                <Pressable
-                  style={styles.actionButton}
-                  onPress={() => {
-                    if (!selectedTask) return;
-                    pushToTomorrow(selectedTask.id);
-                    closeTaskModal();
-                  }}
-                >
-                  <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
-                </Pressable>
-              )}
               <Pressable
                 style={[styles.actionButton, styles.deleteButton]}
                 onPress={() => {
@@ -278,10 +278,21 @@ export default function Calender() {
                       },
                     ]
                   );
-                }}
-              >
+                }}>
                 <MaterialCommunityIcons name="close" size={18} color="#FFFFFF" />
               </Pressable>
+              {selectedTask && !selectedTask.completed && (
+                <Pressable
+                  style={[styles.actionButton, styles.tomorrowButton]}
+                  onPress={() => {
+                    if (!selectedTask) return;
+                    pushToTomorrow(selectedTask.id);
+                    closeTaskModal();
+                  }}
+                >
+                  <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
+                </Pressable>
+              )}
               <Pressable
                 style={[
                   styles.actionButton,
@@ -382,6 +393,12 @@ const styles = StyleSheet.create({
   },
   dateTextFaded: {
     color: "#475569",
+  },
+  pendingCount: {
+    color: "#A5B4FC",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 4,
   },
   todayCell: {
     borderWidth: 1,
@@ -490,6 +507,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#1E293B",
     alignItems: "center",
     justifyContent: "center",
+  },
+  tomorrowButton: {
+    backgroundColor: "#2563EB",
   },
   actionButtonText: {
     color: "#F8FAFC",

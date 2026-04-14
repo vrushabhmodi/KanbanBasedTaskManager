@@ -251,19 +251,6 @@ export default function Today() {
                   <MaterialCommunityIcons name="calendar" size={18} color="#F8FAFC" />
                 </Pressable>
               )}
-              {selectedTask && !selectedTask.completed && (
-                <Pressable
-                  style={styles.actionButton}
-                  onPress={() => {
-                    const task = selectedTask;
-                    if (!task) return;
-                    pushToTomorrow(task.id);
-                    closeTaskModal();
-                  }}
-                >
-                  <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
-                </Pressable>
-              )}
               <Pressable
                 style={[
                   styles.actionButton,
@@ -287,10 +274,22 @@ export default function Today() {
                       },
                     ]
                   );
-                }}
-              >
+                }}>
                 <MaterialCommunityIcons name="close" size={18} color="#FFFFFF" />
               </Pressable>
+              {selectedTask && !selectedTask.completed && (
+                <Pressable
+                  style={[styles.actionButton, styles.tomorrowButton]}
+                  onPress={() => {
+                    const task = selectedTask;
+                    if (!task) return;
+                    pushToTomorrow(task.id);
+                    closeTaskModal();
+                  }}
+                >
+                  <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
+                </Pressable>
+              )}
               <Pressable
                 style={[
                   styles.actionButton,
@@ -452,6 +451,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: "#1E293B",
     alignItems: "center",
+  },
+  tomorrowButton: {
+    backgroundColor: "#2563EB",
   },
   actionButtonText: {
     color: "#F8FAFC",
