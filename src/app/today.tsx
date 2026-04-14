@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { formatDateKey, parseSelectedDate } from "./date-utils";
 import { useTaskActions, useTasks } from "./task-context";
 
@@ -122,43 +122,49 @@ export default function Today() {
       </View>
 
       <Text style={styles.sectionTitle}>Tasks</Text>
-      {tasksForSelectedDate.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No tasks for this date yet.</Text>
-        </View>
-      ) : (
-        tasksForSelectedDate.map((task) => (
-          <Pressable
-            key={task.id}
-            style={[styles.taskCard, task.completed && styles.taskCardCompleted]}
-            onPress={() => openTaskModal(task)}
-          >
-            <Text style={[styles.taskTitle, task.completed && styles.taskTitleCompleted]}>
-              {task.title}
-            </Text>
-            <View style={styles.taskActions}>
-              {!task.completed && (
-                <Pressable style={styles.actionButton} onPress={() => pushToTomorrow(task.id)}>
-                  <MaterialCommunityIcons name="arrow-right" size={20} color="#F8FAFC" />
+      <ScrollView
+        style={styles.taskList}
+        contentContainerStyle={styles.taskListContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {tasksForSelectedDate.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No tasks for this date yet.</Text>
+          </View>
+        ) : (
+          tasksForSelectedDate.map((task) => (
+            <Pressable
+              key={task.id}
+              style={[styles.taskCard, task.completed && styles.taskCardCompleted]}
+              onPress={() => openTaskModal(task)}
+            >
+              <Text style={[styles.taskTitle, task.completed && styles.taskTitleCompleted]}>
+                {task.title}
+              </Text>
+              <View style={styles.taskActions}>
+                {!task.completed && (
+                  <Pressable style={styles.actionButton} onPress={() => pushToTomorrow(task.id)}>
+                    <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
+                  </Pressable>
+                )}
+                <Pressable
+                  style={[
+                    styles.actionButton,
+                    task.completed ? styles.undoneButton : styles.doneButton,
+                  ]}
+                  onPress={() => toggleTaskCompleted(task.id)}
+                >
+                  <MaterialCommunityIcons
+                    name={task.completed ? "undo" : "check"}
+                    size={18}
+                    color={task.completed ? "#0F172A" : "#FFFFFF"}
+                  />
                 </Pressable>
-              )}
-              <Pressable
-                style={[
-                  styles.actionButton,
-                  task.completed ? styles.undoneButton : styles.doneButton,
-                ]}
-                onPress={() => toggleTaskCompleted(task.id)}
-              >
-                <MaterialCommunityIcons
-                  name={task.completed ? "undo" : "check"}
-                  size={20}
-                  color={task.completed ? "#0F172A" : "#FFFFFF"}
-                />
-              </Pressable>
-            </View>
-          </Pressable>
-        ))
-      )}
+              </View>
+            </Pressable>
+          ))
+        )}
+      </ScrollView>
 
       <Modal transparent visible={!!selectedTask} animationType="fade" onRequestClose={closeTaskModal}>
         <View style={styles.modalOverlay}>
@@ -191,7 +197,7 @@ export default function Today() {
                     closeTaskModal();
                   }}
                 >
-                  <MaterialCommunityIcons name="arrow-right" size={20} color="#F8FAFC" />
+                  <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
                 </Pressable>
               )}
               <Pressable
@@ -219,7 +225,7 @@ export default function Today() {
                   );
                 }}
               >
-                <MaterialCommunityIcons name="close" size={20} color="#FFFFFF" />
+                <MaterialCommunityIcons name="close" size={18} color="#FFFFFF" />
               </Pressable>
               <Pressable
                 style={[
@@ -235,7 +241,7 @@ export default function Today() {
               >
                 <MaterialCommunityIcons
                   name={selectedTask?.completed ? "undo" : "check"}
-                  size={20}
+                  size={18}
                   color={selectedTask?.completed ? "#0F172A" : "#FFFFFF"}
                 />
               </Pressable>
@@ -264,13 +270,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 24,
+    backgroundColor: "#111827",
+    borderRadius: 28,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#334155",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 18,
+    elevation: 8,
   },
   dayCard: {
     flex: 1,
     minWidth: 0,
     height: 110,
     borderRadius: 20,
-    backgroundColor: "#111827",
+    backgroundColor: "#0F172A",
     marginHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",
@@ -283,15 +299,15 @@ const styles = StyleSheet.create({
   },
   dayName: {
     color: "#E2E8F0",
-    fontSize: 14,
-    marginBottom: 12,
+    fontSize: 12,
+    marginBottom: 8,
   },
   dayNameSelected: {
     color: "#0F172A",
   },
   dayNumber: {
     color: "#F8FAFC",
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: "700",
   },
   dayNumberSelected: {
@@ -302,6 +318,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 12,
+  },
+  taskList: {
+    flex: 1,
+    width: "100%",
+  },
+  taskListContent: {
+    paddingBottom: 120,
   },
   emptyState: {
     padding: 20,
@@ -336,7 +359,7 @@ const styles = StyleSheet.create({
   },
   taskTitle: {
     color: "#F8FAFC",
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
     marginBottom: 14,
   },
@@ -353,7 +376,7 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 16,
     backgroundColor: "#1E293B",
     alignItems: "center",
