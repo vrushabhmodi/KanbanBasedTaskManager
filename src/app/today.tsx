@@ -1,25 +1,12 @@
-import { useMemo, useState } from "react";
+import { useLocalSearchParams } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const monthNames = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 function getWeekDays(referenceDate: Date) {
   const weekStart = new Date(referenceDate);
-  weekStart.setDate(referenceDate.getDate() - referenceDate.getDay());
+  weekStart.setDate(referenceDate.getDate() - weekStart.getDay());
 
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(weekStart);
@@ -28,10 +15,26 @@ function getWeekDays(referenceDate: Date) {
   });
 }
 
+function parseSelectedDate(dateParam: string | string[] | undefined) {
+  if (!dateParam) return null;
+  const dateString = Array.isArray(dateParam) ? dateParam[0] : dateParam;
+  const parsed = new Date(dateString);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export default function Today() {
+  const searchParams = useLocalSearchParams();
   const today = useMemo(() => new Date(), []);
-  const [selectedDate, setSelectedDate] = useState(today);
-  const weekDays = useMemo(() => getWeekDays(today), [today]);
+  const initialDate = useMemo(() => parseSelectedDate(searchParams.date) ?? today, [searchParams.date, today]);
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
+
+  useEffect(() => {
+    const routedDate = parseSelectedDate(searchParams.date);
+    if (routedDate && routedDate.getTime() !== selectedDate.getTime()) {
+      setSelectedDate(routedDate);
+    }
+  }, [searchParams.date, selectedDate]);
 
   return (
     <View style={styles.container}>
@@ -75,7 +78,7 @@ const styles = StyleSheet.create({
     color: "#F8FAFC",
     fontSize: 32,
     fontWeight: "700",
-    marginBottom: 6,
+    marginBottom: 18,
   },
   weekContainer: {
     flexDirection: "row",
