@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
 import { PanGestureHandler, State } from "react-native-gesture-handler";
-import { formatDateKey, parseSelectedDate } from "./date-utils";
+import { formatDateKey, parseDateKey, parseSelectedDate } from "./date-utils";
 import { useTaskActions, useTasks } from "./task-context";
+import TaskReschedulePicker from "./task-reschedule-picker";
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -40,6 +41,8 @@ export default function Today() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDetails, setEditDetails] = useState("");
+  const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState(() => new Date());
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
 
   useEffect(() => {
@@ -67,12 +70,35 @@ export default function Today() {
     setSelectedTask(null);
     setEditTitle("");
     setEditDetails("");
+    setIsRescheduleOpen(false);
+    setRescheduleDate(new Date());
   };
 
   const openTaskModal = (task: Task) => {
     setSelectedTask(task);
     setEditTitle(task.title);
     setEditDetails(task.details ?? "");
+    setIsRescheduleOpen(false);
+    setRescheduleDate(parseDateKey(task.dueDate) ?? new Date());
+  };
+
+  const openRescheduleModal = () => {
+    if (!selectedTask) return;
+    setIsRescheduleOpen(true);
+    setRescheduleDate(parseDateKey(selectedTask.dueDate) ?? new Date());
+  };
+
+  const handleRescheduleConfirm = () => {
+    if (!selectedTask) return;
+    const formatted = formatDateKey(rescheduleDate);
+    setTaskDueDate(selectedTask.id, formatted);
+    setSelectedTask({ ...selectedTask, dueDate: formatted });
+    closeTaskModal();
+  };
+
+  const handleRescheduleCancel = () => {
+    setIsRescheduleOpen(false);
+    setRescheduleDate(parseDateKey(selectedTask?.dueDate ?? "") ?? new Date());
   };
 
   const saveTaskEdits = () => {
@@ -221,6 +247,11 @@ export default function Today() {
             />
             <View style={[styles.taskActions, styles.modalTaskActions]}>
               {selectedTask && !selectedTask.completed && (
+                <Pressable style={styles.actionButton} onPress={openRescheduleModal}>
+                  <MaterialCommunityIcons name="calendar" size={18} color="#F8FAFC" />
+                </Pressable>
+              )}
+              {selectedTask && !selectedTask.completed && (
                 <Pressable
                   style={styles.actionButton}
                   onPress={() => {
@@ -279,6 +310,14 @@ export default function Today() {
                 />
               </Pressable>
             </View>
+            <TaskReschedulePicker
+              visible={isRescheduleOpen}
+              selectedDate={rescheduleDate}
+              currentDueDate={parseDateKey(selectedTask?.dueDate ?? "") ?? new Date()}
+              onSelectDate={setRescheduleDate}
+              onConfirm={handleRescheduleConfirm}
+              onCancel={handleRescheduleCancel}
+            />
           </View>
         </View>
       </Modal>

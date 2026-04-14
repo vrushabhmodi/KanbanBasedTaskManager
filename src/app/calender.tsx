@@ -1,11 +1,11 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
 import { GestureHandlerRootView, PanGestureHandler, State } from "react-native-gesture-handler";
-import { formatDateKey } from "./date-utils";
+import { formatDateKey, parseDateKey } from "./date-utils";
 import { useTaskActions, useTasks } from "./task-context";
+import TaskReschedulePicker from "./task-reschedule-picker";
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const monthNames = [
@@ -23,6 +23,14 @@ const monthNames = [
   "December",
 ];
 
+type Task = {
+  id: string;
+  title: string;
+  details?: string;
+  dueDate: string;
+  completed: boolean;
+};
+
 function getGridDates(referenceDate: Date) {
   const firstOfMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
   const startOffset = firstOfMonth.getDay();
@@ -37,7 +45,6 @@ function getGridDates(referenceDate: Date) {
 }
 
 export default function Calender() {
-  const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const today = useMemo(() => new Date(), []);
   const { tasks } = useTasks();
@@ -46,6 +53,8 @@ export default function Calender() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDetails, setEditDetails] = useState("");
+  const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState(() => new Date());
 
   const selectedDateKey = formatDateKey(selectedDate);
   const tasksForSelectedDate = useMemo(() => {
@@ -72,12 +81,35 @@ export default function Calender() {
     setSelectedTask(task);
     setEditTitle(task.title);
     setEditDetails(task.details ?? "");
+    setIsRescheduleOpen(false);
+    setRescheduleDate(parseDateKey(task.dueDate) ?? new Date());
   };
 
   const closeTaskModal = () => {
     setSelectedTask(null);
     setEditTitle("");
     setEditDetails("");
+    setIsRescheduleOpen(false);
+    setRescheduleDate(new Date());
+  };
+
+  const openRescheduleModal = () => {
+    if (!selectedTask) return;
+    setIsRescheduleOpen(true);
+    setRescheduleDate(parseDateKey(selectedTask.dueDate) ?? new Date());
+  };
+
+  const handleRescheduleConfirm = () => {
+    if (!selectedTask) return;
+    const formatted = formatDateKey(rescheduleDate);
+    setTaskDueDate(selectedTask.id, formatted);
+    setSelectedTask({ ...selectedTask, dueDate: formatted });
+    closeTaskModal();
+  };
+
+  const handleRescheduleCancel = () => {
+    setIsRescheduleOpen(false);
+    setRescheduleDate(parseDateKey(selectedTask?.dueDate ?? "") ?? new Date());
   };
 
   const onChangeTitle = (value: string) => {
@@ -209,7 +241,12 @@ export default function Calender() {
               multiline
               numberOfLines={4}
             />
-            <View style={[styles.taskActions, styles.modalTaskActions]}>
+            <View style={styles.modalTaskActions}>
+              {selectedTask && !selectedTask.completed && (
+                <Pressable style={styles.actionButton} onPress={openRescheduleModal}>
+                  <MaterialCommunityIcons name="calendar" size={18} color="#F8FAFC" />
+                </Pressable>
+              )}
               {selectedTask && !selectedTask.completed && (
                 <Pressable
                   style={styles.actionButton}
@@ -263,6 +300,14 @@ export default function Calender() {
                 />
               </Pressable>
             </View>
+            <TaskReschedulePicker
+              visible={isRescheduleOpen}
+              selectedDate={rescheduleDate}
+              currentDueDate={parseDateKey(selectedTask?.dueDate ?? "") ?? new Date()}
+              onSelectDate={setRescheduleDate}
+              onConfirm={handleRescheduleConfirm}
+              onCancel={handleRescheduleCancel}
+            />
           </View>
         </View>
       </Modal>
