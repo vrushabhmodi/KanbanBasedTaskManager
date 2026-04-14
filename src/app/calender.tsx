@@ -1,9 +1,11 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
 import { GestureHandlerRootView, PanGestureHandler, State } from "react-native-gesture-handler";
 import { formatDateKey } from "./date-utils";
+import { useTaskActions, useTasks } from "./task-context";
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const monthNames = [
@@ -38,6 +40,21 @@ export default function Calender() {
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const today = useMemo(() => new Date(), []);
+  const { tasks } = useTasks();
+  const { toggleTaskCompleted, updateTask, deleteTask, setTaskDueDate } = useTaskActions();
+  const [selectedDate, setSelectedDate] = useState(() => today);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDetails, setEditDetails] = useState("");
+
+  const selectedDateKey = formatDateKey(selectedDate);
+  const tasksForSelectedDate = useMemo(() => {
+    return [...tasks]
+      .filter((task) => task.dueDate === selectedDateKey)
+      .sort((a, b) => Number(a.completed) - Number(b.completed));
+  }, [tasks, selectedDateKey]);
+
+  const selectedDateLabel = `${selectedDate.toLocaleString("default", { weekday: "short" })}, ${selectedDate.toLocaleString("default", { month: "short" })} ${selectedDate.getDate()}`;
 
   const gridDates = useMemo(() => getGridDates(currentMonth), [currentMonth]);
 
@@ -51,8 +68,40 @@ export default function Calender() {
     });
   };
 
+  const openTaskModal = (task: Task) => {
+    setSelectedTask(task);
+    setEditTitle(task.title);
+    setEditDetails(task.details ?? "");
+  };
+
+  const closeTaskModal = () => {
+    setSelectedTask(null);
+    setEditTitle("");
+    setEditDetails("");
+  };
+
+  const onChangeTitle = (value: string) => {
+    setEditTitle(value);
+    if (!selectedTask) return;
+    updateTask(selectedTask.id, { title: value });
+    setSelectedTask({ ...selectedTask, title: value });
+  };
+
+  const onChangeDetails = (value: string) => {
+    setEditDetails(value);
+    if (!selectedTask) return;
+    updateTask(selectedTask.id, { details: value || undefined });
+    setSelectedTask({ ...selectedTask, details: value || undefined });
+  };
+
+  const pushToTomorrow = (taskId: string) => {
+    const tomorrow = new Date(selectedDate);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setTaskDueDate(taskId, formatDateKey(tomorrow));
+  };
+
   const handleSelectDate = (date: Date) => {
-    router.push({ pathname: "/today", params: { date: formatDateKey(date) } });
+    setSelectedDate(date);
   };
 
   const handleSwipe = ({ nativeEvent }: PanGestureHandlerGestureEvent) => {
@@ -67,7 +116,7 @@ export default function Calender() {
 
   return (
     <GestureHandlerRootView style={styles.gestureRoot}>
-      <PanGestureHandler onHandlerStateChange={handleSwipe}>
+      <PanGestureHandler onHandlerStateChange={handleSwipe} activeOffsetX={[-10, 10]} failOffsetY={[-10, 10]}>
         <View style={styles.container}>
           <View style={styles.header}>
             <Pressable style={styles.navButton} onPress={() => changeMonth(-1)}>
@@ -112,8 +161,111 @@ export default function Calender() {
           );
         })}
       </View>
+
+      <Text style={styles.sectionTitle}>Tasks for {selectedDateLabel}</Text>
+      <ScrollView
+        style={styles.taskList}
+        contentContainerStyle={styles.taskListContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {tasksForSelectedDate.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No tasks due on this date.</Text>
+          </View>
+        ) : (
+          tasksForSelectedDate.map((task) => (
+            <Pressable
+              key={task.id}
+              style={[styles.smallTaskCard, task.completed && styles.smallTaskCardCompleted]}
+              onPress={() => openTaskModal(task)}
+            >
+              <Text style={[styles.smallTaskTitle, task.completed && styles.smallTaskTitleCompleted]}>
+                {task.title}
+              </Text>
+            </Pressable>
+          ))
+        )}
+      </ScrollView>
         </View>
       </PanGestureHandler>
+
+      <Modal transparent visible={!!selectedTask} animationType="fade" onRequestClose={closeTaskModal}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalOverlayTouchable} onPress={closeTaskModal} />
+          <View style={styles.modalCard}>
+            <TextInput
+              value={editTitle}
+              onChangeText={onChangeTitle}
+              placeholder="Task title"
+              placeholderTextColor="#94A3B8"
+              style={[styles.input, styles.modalHeadingInput]}
+            />
+            <TextInput
+              value={editDetails}
+              onChangeText={onChangeDetails}
+              placeholder="Details (optional)"
+              placeholderTextColor="#94A3B8"
+              style={[styles.input, styles.modalDetailsInput]}
+              multiline
+              numberOfLines={4}
+            />
+            <View style={[styles.taskActions, styles.modalTaskActions]}>
+              {selectedTask && !selectedTask.completed && (
+                <Pressable
+                  style={styles.actionButton}
+                  onPress={() => {
+                    if (!selectedTask) return;
+                    pushToTomorrow(selectedTask.id);
+                    closeTaskModal();
+                  }}
+                >
+                  <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
+                </Pressable>
+              )}
+              <Pressable
+                style={[styles.actionButton, styles.deleteButton]}
+                onPress={() => {
+                  if (!selectedTask) return;
+                  Alert.alert(
+                    "Delete task",
+                    `Are you sure you want to delete "${selectedTask.title}"?`,
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: () => {
+                          deleteTask(selectedTask.id);
+                          closeTaskModal();
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <MaterialCommunityIcons name="close" size={18} color="#FFFFFF" />
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.actionButton,
+                  selectedTask?.completed ? styles.undoneButton : styles.doneButton,
+                ]}
+                onPress={() => {
+                  if (!selectedTask) return;
+                  toggleTaskCompleted(selectedTask.id);
+                  closeTaskModal();
+                }}
+              >
+                <MaterialCommunityIcons
+                  name={selectedTask?.completed ? "undo" : "check"}
+                  size={18}
+                  color={selectedTask?.completed ? "#0F172A" : "#FFFFFF"}
+                />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </GestureHandlerRootView>
   );
 }
@@ -160,10 +312,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   gridContainer: {
-    flex: 1,
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
+    alignContent: "flex-start",
+    alignItems: "flex-start",
   },
   dateCell: {
     width: "13.5%",
@@ -191,6 +344,125 @@ const styles = StyleSheet.create({
   },
   todayText: {
     color: "#F59E0B",
+  },
+  sectionTitle: {
+    color: "#E2E8F0",
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  taskList: {
+    flex: 1,
+    width: "100%",
+    minHeight: 0,
+    marginTop: 0,
+  },
+  taskListContent: {
+    paddingBottom: 120,
+    flexGrow: 1,
+  },
+  smallTaskCard: {
+    backgroundColor: "#111827",
+    borderRadius: 18,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
+  smallTaskCardCompleted: {
+    backgroundColor: "#0B1220",
+    borderColor: "#334155",
+    opacity: 0.9,
+  },
+  smallTaskTitle: {
+    color: "#F8FAFC",
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  smallTaskTitleCompleted: {
+    color: "#94A3B8",
+    textDecorationLine: "line-through",
+  },
+  emptyState: {
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: "#111827",
+    borderWidth: 1,
+    borderColor: "#1F2937",
+    alignItems: "center",
+  },
+  emptyText: {
+    color: "#94A3B8",
+    fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalOverlayTouchable: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modalCard: {
+    backgroundColor: "#0F172A",
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "#1F2937",
+    zIndex: 1,
+  },
+  input: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#334155",
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: "#F8FAFC",
+    backgroundColor: "#111827",
+    marginBottom: 12,
+  },
+  modalHeadingInput: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  modalDetailsInput: {
+    minHeight: 84,
+    textAlignVertical: "top",
+  },
+  modalTaskActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 8,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: "#1E293B",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionButtonText: {
+    color: "#F8FAFC",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  saveButton: {
+    backgroundColor: "#2563EB",
+    marginBottom: 10,
+  },
+  doneButton: {
+    backgroundColor: "#10B981",
+  },
+  deleteButton: {
+    backgroundColor: "#DC2626",
+  },
+  undoneButton: {
+    backgroundColor: "#E2E8F0",
   },
   gestureRoot: {
     flex: 1,
