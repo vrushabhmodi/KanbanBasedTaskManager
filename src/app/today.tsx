@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useTaskActions, useTasks } from "./task-context";
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -35,37 +36,16 @@ function parseSelectedDate(dateParam: string | string[] | undefined) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-const initialTasks: Task[] = [
-  {
-    id: "task-1",
-    title: "Write the daily plan",
-    details: "Capture the main priorities and schedule tomorrow's follow-up items.",
-    dueDate: formatDateKey(new Date()),
-    completed: false,
-  },
-  {
-    id: "task-2",
-    title: "Review code for the calendar screen",
-    details: "Check the swipe gestures, date rendering, and tab navigation behavior.",
-    dueDate: formatDateKey(new Date()),
-    completed: false,
-  },
-  {
-    id: "task-3",
-    title: "Prepare notes for tomorrow",
-    details: "Draft the agenda, attach files, and set a reminder for the first meeting.",
-    dueDate: formatDateKey(new Date(new Date().setDate(new Date().getDate() + 1))),
-    completed: false,
-  },
-];
-
 export default function Today() {
+  const { tasks } = useTasks();
+  const { toggleTaskCompleted, setTaskDueDate, updateTask } = useTaskActions();
   const searchParams = useLocalSearchParams();
   const today = useMemo(() => new Date(), []);
   const initialDate = useMemo(() => parseSelectedDate(searchParams.date) ?? today, [searchParams.date, today]);
   const [selectedDate, setSelectedDate] = useState(initialDate);
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDetails, setEditDetails] = useState("");
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
 
   useEffect(() => {
@@ -82,29 +62,46 @@ export default function Today() {
       .sort((a, b) => Number(a.completed) - Number(b.completed));
   }, [tasks, selectedDateKey]);
 
-  const setTaskDueDate = (taskId: string, dueDate: string) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, dueDate, completed: false } : task
-      )
-    );
-  };
-
   const pushToTomorrow = (taskId: string) => {
     const tomorrow = new Date(selectedDate);
     tomorrow.setDate(tomorrow.getDate() + 1);
     setTaskDueDate(taskId, formatDateKey(tomorrow));
   };
 
-  const toggleTaskCompleted = (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
-    );
+  const closeTaskModal = () => {
+    setSelectedTask(null);
+    setEditTitle("");
+    setEditDetails("");
   };
 
-  const closeTaskModal = () => setSelectedTask(null);
+  const openTaskModal = (task: Task) => {
+    setSelectedTask(task);
+    setEditTitle(task.title);
+    setEditDetails(task.details ?? "");
+  };
+
+  const saveTaskEdits = () => {
+    if (!selectedTask) return;
+    updateTask(selectedTask.id, {
+      title: editTitle,
+      details: editDetails || undefined,
+    });
+    setSelectedTask({ ...selectedTask, title: editTitle, details: editDetails || undefined });
+  };
+
+  const onChangeTitle = (value: string) => {
+    setEditTitle(value);
+    if (!selectedTask) return;
+    updateTask(selectedTask.id, { title: value });
+    setSelectedTask({ ...selectedTask, title: value });
+  };
+
+  const onChangeDetails = (value: string) => {
+    setEditDetails(value);
+    if (!selectedTask) return;
+    updateTask(selectedTask.id, { details: value || undefined });
+    setSelectedTask({ ...selectedTask, details: value || undefined });
+  };
 
   return (
     <View style={styles.container}>
@@ -144,7 +141,7 @@ export default function Today() {
           <Pressable
             key={task.id}
             style={[styles.taskCard, task.completed && styles.taskCardCompleted]}
-            onPress={() => setSelectedTask(task)}
+            onPress={() => openTaskModal(task)}
           >
             <Text style={[styles.taskTitle, task.completed && styles.taskTitleCompleted]}>
               {task.title}
@@ -177,12 +174,22 @@ export default function Today() {
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalOverlayTouchable} onPress={closeTaskModal} />
           <View style={styles.modalCard}>
-            <Text style={styles.modalHeading}>{selectedTask?.title}</Text>
-            {selectedTask?.details ? (
-              <Text style={styles.modalDetails}>{selectedTask.details}</Text>
-            ) : (
-              <Text style={styles.modalDetailsOptional}>No additional details.</Text>
-            )}
+            <TextInput
+              value={editTitle}
+              onChangeText={onChangeTitle}
+              placeholder="Task title"
+              placeholderTextColor="#94A3B8"
+              style={[styles.input, styles.modalHeadingInput]}
+            />
+            <TextInput
+              value={editDetails}
+              onChangeText={onChangeDetails}
+              placeholder="Details (optional)"
+              placeholderTextColor="#94A3B8"
+              style={[styles.input, styles.modalDetailsInput]}
+              multiline
+              numberOfLines={4}
+            />
             <View style={[styles.taskActions, styles.modalTaskActions]}>
               {selectedTask && !selectedTask.completed && (
                 <Pressable
@@ -339,6 +346,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+  createButton: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 18,
+    backgroundColor: "#F59E0B",
+    alignItems: "center",
+  },
+  createButtonDisabled: {
+    opacity: 0.5,
+  },
+  createButtonText: {
+    color: "#0F172A",
+    fontWeight: "700",
+    fontSize: 16,
+  },
   doneButton: {
     backgroundColor: "#10B981",
   },
@@ -367,6 +389,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#1F2937",
     zIndex: 1,
+  },
+  input: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#334155",
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: "#F8FAFC",
+    backgroundColor: "#111827",
+    marginBottom: 12,
+  },
+  modalHeadingInput: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+  modalDetailsInput: {
+    minHeight: 96,
+    textAlignVertical: "top",
   },
   modalHeading: {
     color: "#F8FAFC",

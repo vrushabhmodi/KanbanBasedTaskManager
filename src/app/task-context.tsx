@@ -1,0 +1,114 @@
+import { createContext, useContext, useMemo, useState } from "react";
+
+type Task = {
+  id: string;
+  title: string;
+  details?: string;
+  dueDate: string; // YYYY-MM-DD
+  completed: boolean;
+};
+
+type TaskContextType = {
+  tasks: Task[];
+  addTask: (task: Omit<Task, "id" | "completed">) => void;
+  updateTask: (taskId: string, changes: Partial<Omit<Task, "id" | "completed">>) => void;
+  toggleTaskCompleted: (taskId: string) => void;
+  setTaskDueDate: (taskId: string, dueDate: string) => void;
+};
+
+const TaskContext = createContext<TaskContextType | null>(null);
+
+function formatDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+const initialTasks: Task[] = [
+  {
+    id: "task-1",
+    title: "Write the daily plan",
+    details: "Capture the main priorities and schedule tomorrow's follow-up items.",
+    dueDate: formatDateKey(new Date()),
+    completed: false,
+  },
+  {
+    id: "task-2",
+    title: "Review code for the calendar screen",
+    details: "Check the swipe gestures, date rendering, and tab navigation behavior.",
+    dueDate: formatDateKey(new Date()),
+    completed: false,
+  },
+  {
+    id: "task-3",
+    title: "Prepare notes for tomorrow",
+    details: "Draft the agenda, attach files, and set a reminder for the first meeting.",
+    dueDate: formatDateKey(new Date(new Date().setDate(new Date().getDate() + 1))),
+    completed: false,
+  },
+];
+
+export function TaskProvider({ children }: { children: React.ReactNode }) {
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+
+  const addTask = (task: Omit<Task, "id" | "completed">) => {
+    setTasks((prevTasks) => [
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        completed: false,
+        ...task,
+      },
+      ...prevTasks,
+    ]);
+  };
+
+  const toggleTaskCompleted = (taskId: string) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      )
+    );
+  };
+
+  const setTaskDueDate = (taskId: string, dueDate: string) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, dueDate, completed: false } : task
+      )
+    );
+  };
+
+  const updateTask = (taskId: string, changes: Partial<Omit<Task, "id" | "completed">>) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, ...changes } : task
+      )
+    );
+  };
+
+  const value = useMemo(
+    () => ({ tasks, addTask, updateTask, toggleTaskCompleted, setTaskDueDate }),
+    [tasks]
+  );
+
+  return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;
+}
+
+export function useTasks() {
+  const context = useContext(TaskContext);
+  if (!context) {
+    throw new Error("useTasks must be used within a TaskProvider");
+  }
+  return context;
+}
+
+export function useTaskActions() {
+  const context = useContext(TaskContext);
+  if (!context) {
+    throw new Error("useTaskActions must be used within a TaskProvider");
+  }
+  return {
+    addTask: context.addTask,
+    updateTask: context.updateTask,
+    toggleTaskCompleted: context.toggleTaskCompleted,
+    setTaskDueDate: context.setTaskDueDate,
+  };
+}
