@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { Task, NewTask } from "./types";
 import { formatDateKey } from "./date-utils";
+import { NewTask, Task } from "./types";
 
 type TaskContextType = {
   tasks: Task[];
