@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Stack, useSegments } from "expo-router";
-import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Keyboard, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { formatDateKey } from "./date-utils";
 import { TaskProvider, useTaskActions } from "./task-context";
@@ -32,6 +32,29 @@ function CreateTaskModal({
   setDetails: (value: string) => void;
 }) {
   const { addTask } = useTaskActions();
+  const titleInputRef = useRef<TextInput>(null);
+
+  const focusTitleInput = () => {
+    if (Platform.OS === "android") {
+      Keyboard.dismiss();
+    }
+
+    titleInputRef.current?.focus();
+
+    if (Platform.OS === "android") {
+      setTimeout(() => titleInputRef.current?.focus(), 100);
+      setTimeout(() => titleInputRef.current?.focus(), 220);
+    }
+  };
+
+  useEffect(() => {
+    if (visible) {
+      focusTitleInput();
+      const handle = setTimeout(focusTitleInput, 80);
+      return () => clearTimeout(handle);
+    }
+    return undefined;
+  }, [visible]);
 
   const handleCreateTask = () => {
     if (!title.trim()) return;
@@ -48,17 +71,26 @@ function CreateTaskModal({
   };
 
   return (
-    <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="fade"
+      onRequestClose={onClose}
+      onShow={focusTitleInput}
+    >
       <View style={styles.modalOverlay}>
         <Pressable style={styles.modalOverlayTouchable} onPress={onClose} />
         <View style={styles.modalCard}>
           <Text style={styles.modalHeading}>Create new task</Text>
           <TextInput
+            ref={titleInputRef}
             value={title}
             onChangeText={setTitle}
             placeholder="Task title"
             placeholderTextColor="#94A3B8"
             style={styles.input}
+            autoFocus
+            showSoftInputOnFocus
           />
           <TextInput
             value={details}

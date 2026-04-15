@@ -196,10 +196,10 @@ export default function Calender() {
                 {task.title}
               </Text>
               <Pressable
-                style={styles.smallTaskActionButton}
+                style={[styles.smallTaskActionButton, styles.tomorrowButton]}
                 onPress={() => pushToTomorrow(task.id)}
               >
-                <MaterialCommunityIcons name="calendar" size={16} color="#F8FAFC" />
+                <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
               </Pressable>
             </Pressable>
           ))
