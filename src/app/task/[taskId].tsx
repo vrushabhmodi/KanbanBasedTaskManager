@@ -82,6 +82,7 @@ export default function TaskDetailScreen() {
     const formatted = formatDateKey(rescheduleDate);
     setTaskDueDate(task.id, formatted);
     setIsRescheduleOpen(false);
+    router.back();
   };
 
   const handleRescheduleCancel = () => {
@@ -125,11 +126,13 @@ export default function TaskDetailScreen() {
     const tomorrow = parseDateKey(task.dueDate) ?? new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     setTaskDueDate(task.id, formatDateKey(tomorrow));
+    router.back();
   };
 
   const handleToggleCompleted = () => {
     if (!task) return;
     toggleTaskCompleted(task.id);
+    router.back();
   };
 
   if (!task) {
