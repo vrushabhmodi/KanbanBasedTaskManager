@@ -183,6 +183,10 @@ export default function Calender() {
             date.getFullYear() === today.getFullYear() &&
             date.getMonth() === today.getMonth() &&
             date.getDate() === today.getDate();
+          const isSelected =
+            date.getFullYear() === selectedDate.getFullYear() &&
+            date.getMonth() === selectedDate.getMonth() &&
+            date.getDate() === selectedDate.getDate();
           const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
 
           return (
@@ -191,11 +195,18 @@ export default function Calender() {
               style={[
                 styles.dateCell,
                 !isCurrentMonth && styles.dateCellFaded,
+                isSelected && styles.selectedCell,
                 isToday && styles.todayCell,
               ]}
               onPress={() => handleSelectDate(date)}
             >
-              <Text style={[styles.dateText, isCurrentMonth ? null : styles.dateTextFaded, isToday ? styles.todayText : null]}>
+              <Text
+                style={[
+                  styles.dateText,
+                  isCurrentMonth ? null : styles.dateTextFaded,
+                  isSelected ? styles.selectedText : isToday ? styles.todayText : null,
+                ]}
+              >
                 {date.getDate()}
               </Text>
               {pendingTaskCounts[formatDateKey(date)] > 0 ? (
@@ -406,6 +417,14 @@ const styles = StyleSheet.create({
   },
   todayText: {
     color: "#F59E0B",
+  },
+  selectedCell: {
+    backgroundColor: "#2563EB",
+    borderWidth: 1,
+    borderColor: "#3B82F6",
+  },
+  selectedText: {
+    color: "#EFF6FF",
   },
   sectionTitle: {
     color: "#E2E8F0",
