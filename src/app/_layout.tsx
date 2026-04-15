@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Stack, useSegments } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Keyboard, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Animated, Easing, Keyboard, LayoutAnimation, Modal, Platform, Pressable, StyleSheet, Text, TextInput, UIManager, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { formatDateKey } from "./date-utils";
 import { TaskProvider, useTaskActions } from "./task-context";
@@ -25,6 +25,9 @@ function CreateTaskModal({
   const { addTask } = useTaskActions();
   const { colors } = useTheme();
   const titleInputRef = useRef<TextInput>(null);
+  const [isMounted, setIsMounted] = useState(visible);
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const cardTranslateY = useRef(new Animated.Value(20)).current;
 
   const focusTitleInput = () => {
     if (Platform.OS === "android") {
@@ -41,12 +44,46 @@ function CreateTaskModal({
 
   useEffect(() => {
     if (visible) {
+      setIsMounted(true);
+      Animated.parallel([
+        Animated.timing(overlayOpacity, {
+          toValue: 1,
+          duration: 220,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(cardTranslateY, {
+          toValue: 0,
+          duration: 240,
+          easing: Easing.out(Easing.back(0.5)),
+          useNativeDriver: true,
+        }),
+      ]).start();
       focusTitleInput();
       const handle = setTimeout(focusTitleInput, 80);
       return () => clearTimeout(handle);
     }
+
+    Animated.parallel([
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 180,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardTranslateY, {
+        toValue: 20,
+        duration: 180,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) {
+        setIsMounted(false);
+      }
+    });
     return undefined;
-  }, [visible]);
+  }, [visible, overlayOpacity, cardTranslateY]);
 
   const handleCreateTask = () => {
     if (!title.trim()) return;
@@ -62,17 +99,26 @@ function CreateTaskModal({
     onClose();
   };
 
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <Modal
       transparent
-      visible={visible}
-      animationType="fade"
+      visible={isMounted}
+      animationType="none"
       onRequestClose={onClose}
-      onShow={focusTitleInput}
     >
-      <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}> 
+      <Animated.View style={[styles.modalOverlay, { backgroundColor: colors.overlay, opacity: overlayOpacity }]}> 
         <Pressable style={styles.modalOverlayTouchable} onPress={onClose} />
-        <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+        <Animated.View
+          style={[
+            styles.modalCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            { transform: [{ translateY: cardTranslateY }] },
+          ]}
+        >
           <Text style={[styles.modalHeading, { color: colors.textPrimary }]}>Create new task</Text>
           <TextInput
             ref={titleInputRef}
@@ -100,8 +146,8 @@ function CreateTaskModal({
           >
             <Text style={[styles.createButtonText, { color: colors.accentText }]}>Create task</Text>
           </Pressable>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -113,6 +159,12 @@ function RootLayoutContent() {
   const [details, setDetails] = useState("");
   const segments = useSegments() as string[];
   const isTaskDetailRoute = segments.includes("task");
+
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      UIManager.setLayoutAnimationEnabledExperimental?.(true);
+    }
+  }, []);
 
   const openCreateModal = () => setCreateModalVisible(true);
   const closeCreateModal = () => {
@@ -128,7 +180,14 @@ function RootLayoutContent() {
       </Stack>
 
       {!isTaskDetailRoute && (
-        <Pressable style={[styles.fab, { backgroundColor: colors.accent }]} onPress={openCreateModal}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.fab,
+            { backgroundColor: colors.accent },
+            pressed && { transform: [{ scale: 0.96 }], opacity: 0.92 },
+          ]}
+          onPress={openCreateModal}
+        >
           <MaterialCommunityIcons name="plus" size={32} color={colors.accentText} />
         </Pressable>
       )}

@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTheme } from "../app/theme-context";
 
 type TaskReschedulePickerProps = {
@@ -35,13 +35,76 @@ export default function TaskReschedulePicker({
   onConfirm,
   onCancel,
 }: TaskReschedulePickerProps) {
+  const [mounted, setMounted] = useState(visible);
   const [visibleMonth, setVisibleMonth] = useState(
     new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
   );
+  const [monthDirection, setMonthDirection] = useState(1);
+  const animation = useRef(new Animated.Value(0)).current;
+  const monthAnimation = useRef(new Animated.Value(1)).current;
+
+  const animatedMonthStyle = {
+    opacity: monthAnimation,
+    transform: [
+      {
+        translateY: monthAnimation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [10, 0],
+        }),
+      },
+    ],
+  };
+
+  const handleMonthChange = (offset: number) => {
+    setMonthDirection(offset);
+    Animated.timing(monthAnimation, {
+      toValue: 0,
+      duration: 160,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => {
+      setVisibleMonth((prev) => {
+        const next = new Date(prev);
+        next.setMonth(prev.getMonth() + offset);
+        return next;
+      });
+      monthAnimation.setValue(0);
+      Animated.timing(monthAnimation, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+    });
+  };
 
   useEffect(() => {
     setVisibleMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
   }, [selectedDate]);
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      Animated.timing(animation, {
+        toValue: 1,
+        duration: 260,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    Animated.timing(animation, {
+      toValue: 0,
+      duration: 180,
+      easing: Easing.in(Easing.ease),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setMounted(false);
+      }
+    });
+  }, [visible, animation]);
 
   const { colors } = useTheme();
   const monthLabel = visibleMonth.toLocaleString("default", {
@@ -51,7 +114,7 @@ export default function TaskReschedulePicker({
 
   const gridDates = useMemo(() => getMonthGrid(visibleMonth), [visibleMonth]);
 
-  if (!visible) {
+  if (!mounted) {
     return null;
   }
 
@@ -61,28 +124,60 @@ export default function TaskReschedulePicker({
     a.getDate() === b.getDate();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }] }>
+    <Animated.View
+      style={[
+        styles.container,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        {
+          opacity: animation,
+          transform: [
+            {
+              translateY: animation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [18, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
       <View style={styles.labelRow}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>Reschedule task</Text>
         <MaterialCommunityIcons name="calendar" size={18} color={colors.textPrimary} />
       </View>
       <View style={styles.monthRow}>
-        <Pressable style={[styles.monthButton, { backgroundColor: colors.surfaceAlt }]} onPress={() => setVisibleMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.monthButton,
+            { backgroundColor: colors.surfaceAlt },
+            pressed && { transform: [{ scale: 0.97 }], opacity: 0.88 },
+          ]}
+          onPress={() => handleMonthChange(-1)}
+        >
           <Text style={[styles.monthButtonText, { color: colors.textPrimary }]}>{"<"}</Text>
         </Pressable>
-        <Text style={[styles.monthLabel, { color: colors.textPrimary }]}>{monthLabel}</Text>
-        <Pressable style={[styles.monthButton, { backgroundColor: colors.surfaceAlt }]} onPress={() => setVisibleMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
+        <Animated.Text style={[styles.monthLabel, { color: colors.textPrimary }, animatedMonthStyle]}>
+          {monthLabel}
+        </Animated.Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.monthButton,
+            { backgroundColor: colors.surfaceAlt },
+            pressed && { transform: [{ scale: 0.97 }], opacity: 0.88 },
+          ]}
+          onPress={() => handleMonthChange(1)}
+        >
           <Text style={[styles.monthButtonText, { color: colors.textPrimary }]}>{">"}</Text>
         </Pressable>
       </View>
-      <View style={styles.weekRow}>
+      <Animated.View style={[styles.weekRow, animatedMonthStyle]}>
         {dayNames.map((day) => (
           <Text key={day} style={[styles.weekDayText, { color: colors.textSecondary }]}>
             {day}
           </Text>
         ))}
-      </View>
-      <View style={styles.gridContainer}>
+      </Animated.View>
+      <Animated.View style={[styles.gridContainer, animatedMonthStyle]}>
         {gridDates.map((date) => {
           const isCurrentMonth = date.getMonth() === visibleMonth.getMonth();
           const isSelected = isSameDay(date, selectedDate);
@@ -112,16 +207,32 @@ export default function TaskReschedulePicker({
             </Pressable>
           );
         })}
-      </View>
+      </Animated.View>
       <View style={styles.buttonRow}>
-        <Pressable style={[styles.button, styles.cancelButton, { backgroundColor: colors.surfaceAlt }]} onPress={onCancel}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.button,
+            styles.cancelButton,
+            { backgroundColor: colors.surfaceAlt },
+            pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+          ]}
+          onPress={onCancel}
+        >
           <Text style={[styles.buttonText, { color: colors.textPrimary }]}>Cancel</Text>
         </Pressable>
-        <Pressable style={[styles.button, styles.confirmButton, { backgroundColor: colors.accentPositive }]} onPress={onConfirm}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.button,
+            styles.confirmButton,
+            { backgroundColor: colors.accentPositive },
+            pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+          ]}
+          onPress={onConfirm}
+        >
           <Text style={[styles.buttonText, { color: colors.background }]}>Confirm</Text>
         </Pressable>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

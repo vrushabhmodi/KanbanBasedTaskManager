@@ -1,11 +1,64 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import TaskReschedulePicker from "../../components/TaskReschedulePicker";
 import { formatDateKey, parseDateKey, parseSelectedDate } from "../date-utils";
 import { useTaskActions, useTasks } from "../task-context";
 import { useTheme } from "../theme-context";
+
+function AnimatedTaskCard({ style, children, completed }: { style?: any; children: React.ReactNode; completed: boolean }) {
+  const animation = useRef(new Animated.Value(0)).current;
+  const completedAnimation = useRef(new Animated.Value(completed ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(animation, {
+      toValue: 1,
+      duration: 260,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [animation]);
+
+  useEffect(() => {
+    Animated.timing(completedAnimation, {
+      toValue: completed ? 1 : 0,
+      duration: 220,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [completed, completedAnimation]);
+
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          opacity: animation.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 1],
+          }),
+          transform: [
+            {
+              translateY: animation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [14, 0],
+              }),
+            },
+            {
+              scale: completedAnimation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 0.98],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
+}
 
 export default function Today() {
   const router = useRouter();
@@ -47,6 +100,7 @@ export default function Today() {
 
   const handleRescheduleConfirm = () => {
     if (!rescheduleTaskId) return;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setTaskDueDate(rescheduleTaskId, formatDateKey(rescheduleDate));
     closeReschedule();
   };
@@ -97,36 +151,62 @@ export default function Today() {
           </View>
         ) : (
           tasksForSelectedDate.map((task) => (
-            <Pressable
+            <AnimatedTaskCard
               key={task.id}
+              completed={task.completed}
               style={[
                 styles.taskCard,
                 { backgroundColor: colors.surface, borderColor: colors.border },
                 task.completed && { backgroundColor: colors.surfaceAlt, borderColor: colors.border, opacity: 0.88 },
               ]}
-              onPress={() => router.push(`/task/${task.id}`)}
             >
-              <View style={styles.taskCardHeader}>
+              <Pressable
+                style={({ pressed }) => [{ flex: 1, opacity: pressed ? 0.92 : 1 }]}
+                onPress={() => router.push(`/task/${task.id}`)}
+              >
+                <View style={styles.taskCardHeader}>
                 <Text style={[styles.taskTitle, { color: colors.textPrimary }, task.completed && { color: colors.textSecondary }]}>
                 {task.title}
               </Text>
               <View style={styles.taskActions}>
                 {!task.completed && (
-                  <Pressable style={[styles.actionButton, { backgroundColor: colors.surfaceAlt }]} onPress={() => openReschedule(task.id)}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      { backgroundColor: colors.surfaceAlt },
+                      pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                    ]}
+                    onPress={() => openReschedule(task.id)}
+                  >
                     <MaterialCommunityIcons name="calendar" size={16} color={colors.textPrimary} />
                   </Pressable>
                 )}
                 {!task.completed && (
-                  <Pressable style={[styles.actionButton, styles.tomorrowButton, { backgroundColor: colors.accentInfo }]} onPress={() => pushToTomorrow(task.id)}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      styles.tomorrowButton,
+                      { backgroundColor: colors.accentInfo },
+                      pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                    ]}
+                    onPress={() => {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      pushToTomorrow(task.id);
+                    }}
+                  >
                     <MaterialCommunityIcons name="arrow-right" size={16} color={colors.background} />
                   </Pressable>
                 )}
                 <Pressable
-                  style={[
+                  style={({ pressed }) => [
                     styles.actionButton,
                     task.completed ? [styles.undoneButton, { backgroundColor: colors.surfaceAlt }] : [styles.doneButton, { backgroundColor: colors.accentPositive }],
+                    pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
                   ]}
-                  onPress={() => toggleTaskCompleted(task.id)}
+                  onPress={() => {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    toggleTaskCompleted(task.id);
+                  }}
                 >
                   <MaterialCommunityIcons
                     name={task.completed ? "undo" : "check"}
@@ -136,7 +216,8 @@ export default function Today() {
                 </Pressable>
               </View>
             </View>
-            </Pressable>
+          </Pressable>
+          </AnimatedTaskCard>
           ))
         )}
       </ScrollView>

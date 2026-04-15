@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import TaskReschedulePicker from "../../components/TaskReschedulePicker";
 import { formatDateKey, parseDateKey } from "../date-utils";
 import { useTaskActions, useTasks } from "../task-context";
@@ -19,11 +19,13 @@ export default function TaskDetailScreen() {
     () => tasks.find((taskItem) => taskItem.id === taskId) ?? null,
     [tasks, taskId]
   );
+  const contentAnimation = useRef(new Animated.Value(0)).current;
 
   const [editTitle, setEditTitle] = useState("");
   const [editDetails, setEditDetails] = useState("");
   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState(() => new Date());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!task) return;
@@ -31,6 +33,15 @@ export default function TaskDetailScreen() {
     setEditDetails(task.details ?? "");
     setRescheduleDate(parseDateKey(task.dueDate) ?? new Date());
   }, [task?.id]);
+
+  useEffect(() => {
+    Animated.timing(contentAnimation, {
+      toValue: 1,
+      duration: 240,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [contentAnimation]);
 
   const handleBack = () => router.back();
 
@@ -91,8 +102,18 @@ export default function TaskDetailScreen() {
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            deleteTask(task.id);
-            router.back();
+            setIsDeleting(true);
+            Animated.timing(contentAnimation, {
+              toValue: 0,
+              duration: 180,
+              easing: Easing.in(Easing.ease),
+              useNativeDriver: true,
+            }).start(({ finished }) => {
+              if (finished) {
+                deleteTask(task.id);
+                router.back();
+              }
+            });
           },
         },
       ]
@@ -113,7 +134,23 @@ export default function TaskDetailScreen() {
 
   if (!task) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}> 
+      <Animated.View
+        style={[
+          styles.container,
+          { backgroundColor: colors.background },
+          {
+            opacity: contentAnimation,
+            transform: [
+              {
+                translateY: contentAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [18, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <View style={styles.headerRow}>
           <Pressable style={[styles.backButton, { backgroundColor: colors.surface }]} onPress={handleBack}>
             <MaterialCommunityIcons name="arrow-left" size={24} color={colors.textPrimary} />
@@ -123,14 +160,36 @@ export default function TaskDetailScreen() {
         <View style={[styles.emptyState, { backgroundColor: colors.surface, borderColor: colors.border }] }>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Task not found.</Text>
         </View>
-      </View>
+      </Animated.View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}> 
+    <Animated.View
+      style={[
+        styles.container,
+        { backgroundColor: colors.background },
+        {
+          opacity: contentAnimation,
+          transform: [
+            {
+              translateY: contentAnimation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [18, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
       <View style={styles.headerRow}>
-        <Pressable style={styles.backButton} onPress={handleBack}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+          ]}
+          onPress={handleBack}
+        >
           <MaterialCommunityIcons name="arrow-left" size={24} color="#F8FAFC" />
         </Pressable>
         <Text style={[styles.heading, { color: colors.textPrimary }]}>Task</Text>
@@ -169,24 +228,52 @@ export default function TaskDetailScreen() {
       <View style={styles.footer}>
         <View style={styles.modalTaskActions}>
           {!task.completed && (
-            <Pressable style={[styles.actionButton, { backgroundColor: colors.surfaceAlt }]} onPress={openRescheduleModal}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionButton,
+                { backgroundColor: colors.surfaceAlt },
+                pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+              ]}
+              onPress={openRescheduleModal}
+            >
               <MaterialCommunityIcons name="calendar" size={18} color={colors.textPrimary} />
             </Pressable>
           )}
-          <Pressable style={[styles.actionButton, { backgroundColor: colors.danger }]} onPress={handleDelete}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              { backgroundColor: colors.danger },
+              pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+            ]}
+            onPress={handleDelete}
+          >
             <MaterialCommunityIcons name="close" size={18} color={colors.surface} />
           </Pressable>
           {!task.completed && (
-            <Pressable style={[styles.actionButton, { backgroundColor: colors.accentInfo }]} onPress={pushToTomorrow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionButton,
+                { backgroundColor: colors.accentInfo },
+                pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+              ]}
+              onPress={pushToTomorrow}
+            >
               <MaterialCommunityIcons name="arrow-right" size={18} color={colors.background} />
             </Pressable>
           )}
-          <Pressable style={[styles.actionButton, task.completed ? [styles.undoneButton, { backgroundColor: colors.surfaceAlt }] : [styles.doneButton, { backgroundColor: colors.accentPositive }]]} onPress={handleToggleCompleted}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              task.completed ? [styles.undoneButton, { backgroundColor: colors.surfaceAlt }] : [styles.doneButton, { backgroundColor: colors.accentPositive }],
+              pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+            ]}
+            onPress={handleToggleCompleted}
+          >
             <MaterialCommunityIcons name={task.completed ? "undo" : "check"} size={18} color={task.completed ? colors.textPrimary : colors.background} />
           </Pressable>
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

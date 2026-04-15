@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
 import { PanGestureHandler, State } from "react-native-gesture-handler";
 import { formatDateKey } from "../date-utils";
@@ -40,6 +40,8 @@ function getGridDates(referenceDate: Date) {
 export default function Calender() {
   const { colors } = useTheme();
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [monthDirection, setMonthDirection] = useState(1);
+  const transition = useRef(new Animated.Value(1)).current;
   const today = useMemo(() => new Date(), []);
   const { tasks } = useTasks();
   const { toggleTaskCompleted, setTaskDueDate } = useTaskActions();
@@ -68,11 +70,38 @@ export default function Calender() {
 
   const monthLabel = `${monthNames[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`;
 
+  const animatedPanelStyle = {
+    opacity: transition,
+    transform: [
+      {
+        translateX: transition.interpolate({
+          inputRange: [0, 1],
+          outputRange: [monthDirection * 20, 0],
+        }),
+      },
+    ],
+  };
+
   const changeMonth = (offset: number) => {
-    setCurrentMonth((prev) => {
-      const next = new Date(prev);
-      next.setMonth(prev.getMonth() + offset);
-      return next;
+    setMonthDirection(offset);
+    Animated.timing(transition, {
+      toValue: 0,
+      duration: 180,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => {
+      setCurrentMonth((prev) => {
+        const next = new Date(prev);
+        next.setMonth(prev.getMonth() + offset);
+        return next;
+      });
+      transition.setValue(0);
+      Animated.timing(transition, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
     });
   };
 
@@ -101,24 +130,57 @@ export default function Calender() {
     <PanGestureHandler onHandlerStateChange={handleSwipe} activeOffsetX={[-10, 10]} failOffsetY={[-10, 10]}>
       <View style={[styles.container, { backgroundColor: colors.background }]}> 
           <View style={styles.header}>
-            <Pressable style={[styles.navButton, { backgroundColor: colors.surface }]} onPress={() => changeMonth(-1)}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.navButton,
+                { backgroundColor: colors.surface },
+                pressed && { transform: [{ scale: 0.97 }], opacity: 0.88 },
+              ]}
+              onPress={() => changeMonth(-1)}
+            >
               <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>Prev</Text>
             </Pressable>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>{monthLabel}</Text>
-            <Pressable style={[styles.navButton, { backgroundColor: colors.surface }]} onPress={() => changeMonth(1)}>
+            <Animated.Text
+              style={[
+                styles.title,
+                { color: colors.textPrimary },
+                {
+                  opacity: transition,
+                  transform: [
+                    {
+                      translateX: transition.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [monthDirection * 10, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              {monthLabel}
+            </Animated.Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.navButton,
+                { backgroundColor: colors.surface },
+                pressed && { transform: [{ scale: 0.97 }], opacity: 0.88 },
+              ]}
+              onPress={() => changeMonth(1)}
+            >
               <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>Next</Text>
             </Pressable>
           </View>
 
-      <View style={styles.dayNamesRow}>
-        {dayNames.map((day) => (
-          <Text key={day} style={[styles.dayName, { color: colors.textSecondary }]}> 
-            {day}
-          </Text>
-        ))}
-      </View>
+      <Animated.View style={animatedPanelStyle}>
+        <View style={styles.dayNamesRow}>
+          {dayNames.map((day) => (
+            <Text key={day} style={[styles.dayName, { color: colors.textSecondary }]}> 
+              {day}
+            </Text>
+          ))}
+        </View>
 
-      <View style={styles.gridContainer}>
+        <View style={styles.gridContainer}>
         {gridDates.map((date) => {
           const isToday =
             date.getFullYear() === today.getFullYear() &&
@@ -133,12 +195,13 @@ export default function Calender() {
           return (
             <Pressable
               key={date.toISOString()}
-              style={[
+              style={({ pressed }) => [
                 styles.dateCell,
                 { backgroundColor: colors.surface },
                 !isCurrentMonth && { backgroundColor: colors.surfaceAlt },
                 isSelected && { backgroundColor: colors.accent, borderWidth: 1, borderColor: colors.accentInfo },
                 isToday && !isSelected && { borderWidth: 1, borderColor: colors.accentPositive },
+                pressed && { transform: [{ scale: 0.96 }], opacity: 0.92 },
               ]}
               onPress={() => handleSelectDate(date)}
             >
@@ -161,6 +224,7 @@ export default function Calender() {
           );
         })}
       </View>
+      </Animated.View>
 
       <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Tasks for {selectedDateLabel}</Text>
       <ScrollView
@@ -196,18 +260,26 @@ export default function Calender() {
               <View style={styles.smallTaskActions}>
                 {!task.completed && (
                   <Pressable
-                    style={[styles.smallTaskActionButton, { backgroundColor: colors.accentInfo }]}
+                    style={({ pressed }) => [
+                      styles.smallTaskActionButton,
+                      { backgroundColor: colors.accentInfo },
+                      pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                    ]}
                     onPress={() => pushToTomorrow(task.id)}
                   >
                     <MaterialCommunityIcons name="arrow-right" size={18} color={colors.background} />
                   </Pressable>
                 )}
                 <Pressable
-                  style={[
+                  style={({ pressed }) => [
                     styles.smallTaskActionButton,
                     task.completed ? [styles.undoneButton, { backgroundColor: colors.surfaceAlt }] : [styles.doneButton, { backgroundColor: colors.accentPositive }],
+                    pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
                   ]}
-                  onPress={() => toggleTaskCompleted(task.id)}
+                  onPress={() => {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    toggleTaskCompleted(task.id);
+                  }}
                 >
                   <MaterialCommunityIcons
                     name={task.completed ? "undo" : "check"}
