@@ -149,6 +149,15 @@ export default function TaskDetailScreen() {
         />
       </ScrollView>
 
+      <TaskReschedulePicker
+        visible={isRescheduleOpen}
+        selectedDate={rescheduleDate}
+        currentDueDate={parseDateKey(task.dueDate) ?? new Date()}
+        onSelectDate={setRescheduleDate}
+        onConfirm={handleRescheduleConfirm}
+        onCancel={handleRescheduleCancel}
+      />
+
       <View style={styles.footer}>
         <View style={styles.modalTaskActions}>
           {!task.completed && (
@@ -169,15 +178,6 @@ export default function TaskDetailScreen() {
           </Pressable>
         </View>
       </View>
-
-      <TaskReschedulePicker
-        visible={isRescheduleOpen}
-        selectedDate={rescheduleDate}
-        currentDueDate={parseDateKey(task.dueDate) ?? new Date()}
-        onSelectDate={setRescheduleDate}
-        onConfirm={handleRescheduleConfirm}
-        onCancel={handleRescheduleCancel}
-      />
     </View>
   );
 }
@@ -240,6 +240,7 @@ const styles = StyleSheet.create({
     right: 16,
     bottom: 16,
     zIndex: 1,
+    elevation: 1,
   },
   modalTaskActions: {
     flexDirection: "row",

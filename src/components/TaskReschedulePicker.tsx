@@ -134,6 +134,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#111827",
     borderWidth: 1,
     borderColor: "#334155",
+    position: "relative",
+    zIndex: 2,
+    elevation: 2,
   },
   labelRow: {
     flexDirection: "row",
