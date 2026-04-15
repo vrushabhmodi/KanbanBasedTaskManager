@@ -7,14 +7,6 @@ import { formatDateKey, parseDateKey } from "../date-utils";
 import { useTaskActions, useTasks } from "../task-context";
 import { useTheme } from "../theme-context";
 
-type Task = {
-  id: string;
-  title: string;
-  details?: string;
-  dueDate: string;
-  completed: boolean;
-};
-
 export default function TaskDetailScreen() {
   const router = useRouter();
   const searchParams = useLocalSearchParams();
@@ -44,14 +36,28 @@ export default function TaskDetailScreen() {
 
   const onChangeTitle = (value: string) => {
     setEditTitle(value);
+  };
+
+  const onTitleBlur = () => {
     if (!task) return;
-    updateTask(task.id, { title: value });
+    const trimmedTitle = editTitle.trim();
+    if (trimmedTitle && trimmedTitle !== task.title) {
+      updateTask(task.id, { title: trimmedTitle });
+    }
+    setEditTitle(trimmedTitle || task.title);
   };
 
   const onChangeDetails = (value: string) => {
     setEditDetails(value);
+  };
+
+  const onDetailsBlur = () => {
     if (!task) return;
-    updateTask(task.id, { details: value || undefined });
+    const details = editDetails.trim();
+    if (details !== (task.details ?? "")) {
+      updateTask(task.id, { details: details || undefined });
+    }
+    setEditDetails(details);
   };
 
   const openRescheduleModal = () => {
@@ -134,6 +140,7 @@ export default function TaskDetailScreen() {
         <TextInput
           value={editTitle}
           onChangeText={onChangeTitle}
+          onBlur={onTitleBlur}
           placeholder="Task title"
           placeholderTextColor={colors.placeholder}
           style={[styles.input, styles.headingInput, { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.textPrimary }]}
@@ -141,6 +148,7 @@ export default function TaskDetailScreen() {
         <TextInput
           value={editDetails}
           onChangeText={onChangeDetails}
+          onBlur={onDetailsBlur}
           placeholder="Details (optional)"
           placeholderTextColor={colors.placeholder}
           style={[styles.input, styles.detailsInput, { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.textPrimary }]}
@@ -256,9 +264,6 @@ const styles = StyleSheet.create({
   },
   tomorrowButton: {
     backgroundColor: "#2563EB",
-  },
-  deleteButton: {
-    backgroundColor: "#DC2626",
   },
   doneButton: {
     backgroundColor: "#10B981",

@@ -7,21 +7,6 @@ import { formatDateKey } from "./date-utils";
 import { TaskProvider, useTaskActions } from "./task-context";
 import { ThemeProvider, useTheme } from "./theme-context";
 
-const TextAny = Text as any;
-const TextInputAny = TextInput as any;
-
-if (TextAny.defaultProps == null) {
-  TextAny.defaultProps = {};
-}
-TextAny.defaultProps.style = [{ fontFamily: "Arial" }, TextAny.defaultProps.style];
-TextAny.defaultProps.allowFontScaling = false;
-
-if (TextInputAny.defaultProps == null) {
-  TextInputAny.defaultProps = {};
-}
-TextInputAny.defaultProps.style = [{ fontFamily: "Arial" }, TextInputAny.defaultProps.style];
-TextInputAny.defaultProps.allowFontScaling = false;
-
 function CreateTaskModal({
   visible,
   onClose,

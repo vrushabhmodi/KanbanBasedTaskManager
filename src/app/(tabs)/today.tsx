@@ -7,32 +7,22 @@ import { formatDateKey, parseDateKey, parseSelectedDate } from "../date-utils";
 import { useTaskActions, useTasks } from "../task-context";
 import { useTheme } from "../theme-context";
 
-type Task = {
-  id: string;
-  title: string;
-  details?: string;
-  dueDate: string; // YYYY-MM-DD
-  completed: boolean;
-};
-
 export default function Today() {
   const router = useRouter();
   const { tasks } = useTasks();
   const { toggleTaskCompleted, setTaskDueDate } = useTaskActions();
   const searchParams = useLocalSearchParams();
-  const today = useMemo(() => new Date(), []);
-  const initialDate = useMemo(() => parseSelectedDate(searchParams.date) ?? today, [searchParams.date, today]);
-  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => parseSelectedDate(searchParams.date) ?? new Date());
   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
-  const [rescheduleDate, setRescheduleDate] = useState(initialDate);
+  const [rescheduleDate, setRescheduleDate] = useState(selectedDate);
   const [rescheduleTaskId, setRescheduleTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     const routedDate = parseSelectedDate(searchParams.date);
-    if (routedDate && routedDate.getTime() !== selectedDate.getTime()) {
+    if (routedDate) {
       setSelectedDate(routedDate);
     }
-  }, [searchParams.date, selectedDate]);
+  }, [searchParams.date]);
 
   const { colors } = useTheme();
   const selectedDateKey = formatDateKey(selectedDate);
@@ -61,7 +51,7 @@ export default function Today() {
     closeReschedule();
   };
   const tasksForSelectedDate = useMemo(() => {
-    return [...tasks]
+    return tasks
       .filter((task) => task.dueDate === selectedDateKey)
       .sort((a, b) => Number(a.completed) - Number(b.completed));
   }, [tasks, selectedDateKey]);
@@ -121,9 +111,11 @@ export default function Today() {
                 {task.title}
               </Text>
               <View style={styles.taskActions}>
-                <Pressable style={[styles.actionButton, { backgroundColor: colors.surfaceAlt }]} onPress={() => openReschedule(task.id)}>
-                  <MaterialCommunityIcons name="calendar" size={16} color={colors.textPrimary} />
-                </Pressable>
+                {!task.completed && (
+                  <Pressable style={[styles.actionButton, { backgroundColor: colors.surfaceAlt }]} onPress={() => openReschedule(task.id)}>
+                    <MaterialCommunityIcons name="calendar" size={16} color={colors.textPrimary} />
+                  </Pressable>
+                )}
                 {!task.completed && (
                   <Pressable style={[styles.actionButton, styles.tomorrowButton, { backgroundColor: colors.accentInfo }]} onPress={() => pushToTomorrow(task.id)}>
                     <MaterialCommunityIcons name="arrow-right" size={16} color={colors.background} />
@@ -211,17 +203,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#1F2937",
   },
-  taskCardCompleted: {
-    backgroundColor: "#0B1220",
-    borderColor: "#334155",
-    opacity: 0.88,
-    borderWidth: 1.5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 2,
-  },
   taskCardHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -235,10 +216,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     marginRight: 8,
     marginBottom: 0,
-  },
-  taskTitleCompleted: {
-    color: "#94A3B8",
-    textDecorationLine: "line-through",
   },
   taskActions: {
     flexDirection: "row",
@@ -257,9 +234,6 @@ const styles = StyleSheet.create({
   },
   doneButton: {
     backgroundColor: "#10B981",
-  },
-  deleteButton: {
-    backgroundColor: "#DC2626",
   },
   undoneButton: {
     backgroundColor: "#E2E8F0",

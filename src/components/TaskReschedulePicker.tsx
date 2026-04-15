@@ -197,26 +197,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#0F172A",
   },
-  dateCellFaded: {
-    backgroundColor: "#0E1726",
-  },
-  dateCellSelected: {
-    backgroundColor: "#F59E0B",
-  },
-  dateCellCurrentDue: {
-    borderWidth: 2,
-    borderColor: "#3B82F6",
-  },
   dateText: {
     color: "#F8FAFC",
     fontSize: 13,
     fontWeight: "700",
-  },
-  dateTextFaded: {
-    color: "#475569",
-  },
-  dateTextSelected: {
-    color: "#0F172A",
   },
   buttonRow: {
     flexDirection: "row",

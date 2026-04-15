@@ -1,19 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-
-type Task = {
-  id: string;
-  title: string;
-  details?: string;
-  dueDate: string; // YYYY-MM-DD
-  completed: boolean;
-};
-
+import { Task, NewTask } from "./types";
 import { formatDateKey } from "./date-utils";
 
 type TaskContextType = {
   tasks: Task[];
-  addTask: (task: Omit<Task, "id" | "completed">) => void;
+  addTask: (task: NewTask) => void;
   updateTask: (taskId: string, changes: Partial<Omit<Task, "id" | "completed">>) => void;
   toggleTaskCompleted: (taskId: string) => void;
   setTaskDueDate: (taskId: string, dueDate: string) => void;
@@ -98,7 +90,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     });
   }, [tasks, isReady]);
 
-  const addTask = (task: Omit<Task, "id" | "completed">) => {
+  const addTask = (task: NewTask) => {
     setTasks((prevTasks) => [
       {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

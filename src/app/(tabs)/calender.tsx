@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
-import { GestureHandlerRootView, PanGestureHandler, State } from "react-native-gesture-handler";
+import { PanGestureHandler, State } from "react-native-gesture-handler";
 import { formatDateKey } from "../date-utils";
 import { useTaskActions, useTasks } from "../task-context";
 import { useTheme } from "../theme-context";
@@ -24,14 +24,6 @@ const monthNames = [
   "December",
 ];
 
-type Task = {
-  id: string;
-  title: string;
-  details?: string;
-  dueDate: string;
-  completed: boolean;
-};
-
 function getGridDates(referenceDate: Date) {
   const firstOfMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
   const startOffset = firstOfMonth.getDay();
@@ -50,13 +42,13 @@ export default function Calender() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const today = useMemo(() => new Date(), []);
   const { tasks } = useTasks();
-  const { toggleTaskCompleted, updateTask, deleteTask, setTaskDueDate } = useTaskActions();
+  const { toggleTaskCompleted, setTaskDueDate } = useTaskActions();
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(() => today);
 
   const selectedDateKey = formatDateKey(selectedDate);
   const tasksForSelectedDate = useMemo(() => {
-    return [...tasks]
+    return tasks
       .filter((task) => task.dueDate === selectedDateKey)
       .sort((a, b) => Number(a.completed) - Number(b.completed));
   }, [tasks, selectedDateKey]);
@@ -106,9 +98,8 @@ export default function Calender() {
   };
 
   return (
-    <GestureHandlerRootView style={styles.gestureRoot}>
-      <PanGestureHandler onHandlerStateChange={handleSwipe} activeOffsetX={[-10, 10]} failOffsetY={[-10, 10]}>
-        <View style={[styles.container, { backgroundColor: colors.background }]}> 
+    <PanGestureHandler onHandlerStateChange={handleSwipe} activeOffsetX={[-10, 10]} failOffsetY={[-10, 10]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}> 
           <View style={styles.header}>
             <Pressable style={[styles.navButton, { backgroundColor: colors.surface }]} onPress={() => changeMonth(-1)}>
               <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>Prev</Text>
@@ -203,12 +194,14 @@ export default function Calender() {
                 {task.title}
               </Text>
               <View style={styles.smallTaskActions}>
-                <Pressable
-                  style={[styles.smallTaskActionButton, { backgroundColor: colors.accentInfo }]}
-                  onPress={() => pushToTomorrow(task.id)}
-                >
-                  <MaterialCommunityIcons name="arrow-right" size={18} color={colors.background} />
-                </Pressable>
+                {!task.completed && (
+                  <Pressable
+                    style={[styles.smallTaskActionButton, { backgroundColor: colors.accentInfo }]}
+                    onPress={() => pushToTomorrow(task.id)}
+                  >
+                    <MaterialCommunityIcons name="arrow-right" size={18} color={colors.background} />
+                  </Pressable>
+                )}
                 <Pressable
                   style={[
                     styles.smallTaskActionButton,
@@ -229,7 +222,6 @@ export default function Calender() {
       </ScrollView>
         </View>
       </PanGestureHandler>
-    </GestureHandlerRootView>
   );
 }
 
@@ -290,27 +282,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  dateCellFaded: {
-  },
   dateText: {
     fontSize: 14,
     fontWeight: "600",
-  },
-  dateTextFaded: {
   },
   pendingCount: {
     fontSize: 11,
     fontWeight: "700",
     marginTop: 4,
-  },
-  todayCell: {
-  },
-  todayText: {
-  },
-  selectedCell: {
-    borderWidth: 1,
-  },
-  selectedText: {
   },
   sectionTitle: {
     fontSize: 18,
@@ -336,9 +315,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
-  smallTaskCardCompleted: {
-    opacity: 0.9,
   },
   smallTaskActionButton: {
     width: 30,
@@ -370,26 +346,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 13,
   },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   tomorrowButton: {
     backgroundColor: "#2563EB",
   },
   doneButton: {
     backgroundColor: "#10B981",
   },
-  deleteButton: {
-    backgroundColor: "#DC2626",
-  },
   undoneButton: {
     backgroundColor: "#E2E8F0",
-  },
-  gestureRoot: {
-    flex: 1,
   },
 });
