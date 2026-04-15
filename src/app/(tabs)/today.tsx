@@ -2,7 +2,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { formatDateKey, parseSelectedDate } from "../date-utils";
+import TaskReschedulePicker from "../../components/TaskReschedulePicker";
+import { formatDateKey, parseDateKey, parseSelectedDate } from "../date-utils";
 import { useTaskActions, useTasks } from "../task-context";
 
 type Task = {
@@ -21,6 +22,9 @@ export default function Today() {
   const today = useMemo(() => new Date(), []);
   const initialDate = useMemo(() => parseSelectedDate(searchParams.date) ?? today, [searchParams.date, today]);
   const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState(initialDate);
+  const [rescheduleTaskId, setRescheduleTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     const routedDate = parseSelectedDate(searchParams.date);
@@ -30,6 +34,30 @@ export default function Today() {
   }, [searchParams.date, selectedDate]);
 
   const selectedDateKey = formatDateKey(selectedDate);
+
+  const selectedTaskToReschedule = rescheduleTaskId
+    ? tasks.find((task) => task.id === rescheduleTaskId) ?? null
+    : null;
+
+  const openReschedule = (taskId: string) => {
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) return;
+
+    setRescheduleTaskId(taskId);
+    setRescheduleDate(parseDateKey(task.dueDate) ?? new Date());
+    setIsRescheduleOpen(true);
+  };
+
+  const closeReschedule = () => {
+    setIsRescheduleOpen(false);
+    setRescheduleTaskId(null);
+  };
+
+  const handleRescheduleConfirm = () => {
+    if (!rescheduleTaskId) return;
+    setTaskDueDate(rescheduleTaskId, formatDateKey(rescheduleDate));
+    closeReschedule();
+  };
   const tasksForSelectedDate = useMemo(() => {
     return [...tasks]
       .filter((task) => task.dueDate === selectedDateKey)
@@ -86,8 +114,11 @@ export default function Today() {
                 {task.title}
               </Text>
               <View style={styles.taskActions}>
+                <Pressable style={styles.actionButton} onPress={() => openReschedule(task.id)}>
+                  <MaterialCommunityIcons name="calendar" size={18} color="#F8FAFC" />
+                </Pressable>
                 {!task.completed && (
-                  <Pressable style={styles.actionButton} onPress={() => pushToTomorrow(task.id)}>
+                  <Pressable style={[styles.actionButton, styles.tomorrowButton]} onPress={() => pushToTomorrow(task.id)}>
                     <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
                   </Pressable>
                 )}
@@ -109,6 +140,15 @@ export default function Today() {
           ))
         )}
       </ScrollView>
+
+      <TaskReschedulePicker
+        visible={isRescheduleOpen}
+        selectedDate={rescheduleDate}
+        currentDueDate={selectedTaskToReschedule ? parseDateKey(selectedTaskToReschedule.dueDate) ?? new Date() : new Date()}
+        onSelectDate={setRescheduleDate}
+        onConfirm={handleRescheduleConfirm}
+        onCancel={closeReschedule}
+      />
     </View>
   );
 }
