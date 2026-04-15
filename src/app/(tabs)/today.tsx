@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import TaskReschedulePicker from "../../components/TaskReschedulePicker";
 import { formatDateKey, parseDateKey, parseSelectedDate } from "../date-utils";
 import { useTaskActions, useTasks } from "../task-context";
+import { useTheme } from "../theme-context";
 
 type Task = {
   id: string;
@@ -33,6 +34,7 @@ export default function Today() {
     }
   }, [searchParams.date, selectedDate]);
 
+  const { colors } = useTheme();
   const selectedDateKey = formatDateKey(selectedDate);
 
   const selectedTaskToReschedule = rescheduleTaskId
@@ -86,56 +88,62 @@ export default function Today() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>Today</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
+      <Text style={[styles.heading, { color: colors.textPrimary }]}>Today</Text>
 
       <View style={styles.dateInfoCompact}>
-        <Text style={styles.dateCompact}>{formattedDate}</Text>
+        <Text style={[styles.dateCompact, { color: colors.textSecondary }]}>{formattedDate}</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Tasks</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Tasks</Text>
       <ScrollView
         style={styles.taskList}
         contentContainerStyle={styles.taskListContent}
         keyboardShouldPersistTaps="handled"
       >
         {tasksForSelectedDate.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No tasks for this date yet.</Text>
+          <View style={[styles.emptyState, { backgroundColor: colors.surface, borderColor: colors.border }] }>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No tasks for this date yet.</Text>
           </View>
         ) : (
           tasksForSelectedDate.map((task) => (
             <Pressable
               key={task.id}
-              style={[styles.taskCard, task.completed && styles.taskCardCompleted]}
+              style={[
+                styles.taskCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                task.completed && { backgroundColor: colors.surfaceAlt, borderColor: colors.border, opacity: 0.88 },
+              ]}
               onPress={() => router.push(`/task/${task.id}`)}
             >
-              <Text style={[styles.taskTitle, task.completed && styles.taskTitleCompleted]}>
+              <View style={styles.taskCardHeader}>
+                <Text style={[styles.taskTitle, { color: colors.textPrimary }, task.completed && { color: colors.textSecondary }]}>
                 {task.title}
               </Text>
               <View style={styles.taskActions}>
-                <Pressable style={styles.actionButton} onPress={() => openReschedule(task.id)}>
-                  <MaterialCommunityIcons name="calendar" size={18} color="#F8FAFC" />
+                <Pressable style={[styles.actionButton, { backgroundColor: colors.surfaceAlt }]} onPress={() => openReschedule(task.id)}>
+                  <MaterialCommunityIcons name="calendar" size={16} color={colors.textPrimary} />
                 </Pressable>
                 {!task.completed && (
-                  <Pressable style={[styles.actionButton, styles.tomorrowButton]} onPress={() => pushToTomorrow(task.id)}>
-                    <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
+                  <Pressable style={[styles.actionButton, styles.tomorrowButton, { backgroundColor: colors.accentInfo }]} onPress={() => pushToTomorrow(task.id)}>
+                    <MaterialCommunityIcons name="arrow-right" size={16} color={colors.background} />
                   </Pressable>
                 )}
                 <Pressable
                   style={[
                     styles.actionButton,
-                    task.completed ? styles.undoneButton : styles.doneButton,
+                    task.completed ? [styles.undoneButton, { backgroundColor: colors.surfaceAlt }] : [styles.doneButton, { backgroundColor: colors.accentPositive }],
                   ]}
                   onPress={() => toggleTaskCompleted(task.id)}
                 >
                   <MaterialCommunityIcons
                     name={task.completed ? "undo" : "check"}
-                    size={18}
-                    color={task.completed ? "#0F172A" : "#FFFFFF"}
+                    size={16}
+                    color={task.completed ? colors.textPrimary : colors.background}
                   />
                 </Pressable>
               </View>
+            </View>
             </Pressable>
           ))
         )}
@@ -156,13 +164,11 @@ export default function Today() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0B1120",
     paddingTop: 48,
     paddingHorizontal: 16,
   },
   heading: {
-    color: "#F8FAFC",
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "700",
     marginBottom: 18,
   },
@@ -170,13 +176,11 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   dateCompact: {
-    color: "#F8FAFC",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "500",
   },
   sectionTitle: {
-    color: "#E2E8F0",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     marginBottom: 12,
   },
@@ -185,11 +189,11 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   taskListContent: {
-    paddingBottom: 120,
+    paddingBottom: 100,
   },
   emptyState: {
-    padding: 20,
-    borderRadius: 20,
+    padding: 18,
+    borderRadius: 18,
     backgroundColor: "#111827",
     borderWidth: 1,
     borderColor: "#1F2937",
@@ -197,13 +201,13 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: "#94A3B8",
-    fontSize: 15,
+    fontSize: 13,
   },
   taskCard: {
     backgroundColor: "#111827",
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 18,
+    padding: 12,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: "#1F2937",
   },
@@ -218,11 +222,19 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2,
   },
+  taskCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   taskTitle: {
     color: "#F8FAFC",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
-    marginBottom: 14,
+    flex: 1,
+    flexShrink: 1,
+    marginRight: 8,
+    marginBottom: 0,
   },
   taskTitleCompleted: {
     color: "#94A3B8",
@@ -230,14 +242,15 @@ const styles = StyleSheet.create({
   },
   taskActions: {
     flexDirection: "row",
-    gap: 12,
+    gap: 6,
   },
   actionButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 16,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: "#1E293B",
     alignItems: "center",
+    justifyContent: "center",
   },
   tomorrowButton: {
     backgroundColor: "#2563EB",

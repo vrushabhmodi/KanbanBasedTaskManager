@@ -5,6 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import TaskReschedulePicker from "../../components/TaskReschedulePicker";
 import { formatDateKey, parseDateKey } from "../date-utils";
 import { useTaskActions, useTasks } from "../task-context";
+import { useTheme } from "../theme-context";
 
 type Task = {
   id: string;
@@ -21,6 +22,7 @@ export default function TaskDetailScreen() {
   const { toggleTaskCompleted, setTaskDueDate, updateTask, deleteTask } = useTaskActions();
   const taskId = String(searchParams.taskId ?? "");
 
+  const { colors } = useTheme();
   const task = useMemo(
     () => tasks.find((taskItem) => taskItem.id === taskId) ?? null,
     [tasks, taskId]
@@ -105,27 +107,27 @@ export default function TaskDetailScreen() {
 
   if (!task) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}> 
         <View style={styles.headerRow}>
-          <Pressable style={styles.backButton} onPress={handleBack}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#F8FAFC" />
+          <Pressable style={[styles.backButton, { backgroundColor: colors.surface }]} onPress={handleBack}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.textPrimary} />
           </Pressable>
-          <Text style={styles.heading}>Task</Text>
+          <Text style={[styles.heading, { color: colors.textPrimary }]}>Task</Text>
         </View>
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Task not found.</Text>
+        <View style={[styles.emptyState, { backgroundColor: colors.surface, borderColor: colors.border }] }>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Task not found.</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
       <View style={styles.headerRow}>
         <Pressable style={styles.backButton} onPress={handleBack}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#F8FAFC" />
         </Pressable>
-        <Text style={styles.heading}>Task details</Text>
+        <Text style={[styles.heading, { color: colors.textPrimary }]}>Task</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
@@ -133,15 +135,15 @@ export default function TaskDetailScreen() {
           value={editTitle}
           onChangeText={onChangeTitle}
           placeholder="Task title"
-          placeholderTextColor="#94A3B8"
-          style={[styles.input, styles.headingInput]}
+          placeholderTextColor={colors.placeholder}
+          style={[styles.input, styles.headingInput, { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.textPrimary }]}
         />
         <TextInput
           value={editDetails}
           onChangeText={onChangeDetails}
           placeholder="Details (optional)"
-          placeholderTextColor="#94A3B8"
-          style={[styles.input, styles.detailsInput]}
+          placeholderTextColor={colors.placeholder}
+          style={[styles.input, styles.detailsInput, { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.textPrimary }]}
           multiline
           numberOfLines={6}
         />
@@ -150,20 +152,20 @@ export default function TaskDetailScreen() {
       <View style={styles.footer}>
         <View style={styles.modalTaskActions}>
           {!task.completed && (
-            <Pressable style={styles.actionButton} onPress={openRescheduleModal}>
-              <MaterialCommunityIcons name="calendar" size={18} color="#F8FAFC" />
+            <Pressable style={[styles.actionButton, { backgroundColor: colors.surfaceAlt }]} onPress={openRescheduleModal}>
+              <MaterialCommunityIcons name="calendar" size={18} color={colors.textPrimary} />
             </Pressable>
           )}
-          <Pressable style={[styles.actionButton, styles.deleteButton]} onPress={handleDelete}>
-            <MaterialCommunityIcons name="close" size={18} color="#FFFFFF" />
+          <Pressable style={[styles.actionButton, { backgroundColor: colors.danger }]} onPress={handleDelete}>
+            <MaterialCommunityIcons name="close" size={18} color={colors.surface} />
           </Pressable>
           {!task.completed && (
-            <Pressable style={[styles.actionButton, styles.tomorrowButton]} onPress={pushToTomorrow}>
-              <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
+            <Pressable style={[styles.actionButton, { backgroundColor: colors.accentInfo }]} onPress={pushToTomorrow}>
+              <MaterialCommunityIcons name="arrow-right" size={18} color={colors.background} />
             </Pressable>
           )}
-          <Pressable style={[styles.actionButton, task.completed ? styles.undoneButton : styles.doneButton]} onPress={handleToggleCompleted}>
-            <MaterialCommunityIcons name={task.completed ? "undo" : "check"} size={18} color={task.completed ? "#0F172A" : "#FFFFFF"} />
+          <Pressable style={[styles.actionButton, task.completed ? [styles.undoneButton, { backgroundColor: colors.surfaceAlt }] : [styles.doneButton, { backgroundColor: colors.accentPositive }]]} onPress={handleToggleCompleted}>
+            <MaterialCommunityIcons name={task.completed ? "undo" : "check"} size={18} color={task.completed ? colors.textPrimary : colors.background} />
           </Pressable>
         </View>
       </View>
@@ -203,7 +205,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     color: "#F8FAFC",
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
   },
   content: {
@@ -225,7 +227,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   headingInput: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
   },
   detailsInput: {
@@ -273,6 +275,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: "#94A3B8",
-    fontSize: 16,
+    fontSize: 14,
   },
 });

@@ -6,6 +6,7 @@ import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler
 import { GestureHandlerRootView, PanGestureHandler, State } from "react-native-gesture-handler";
 import { formatDateKey } from "../date-utils";
 import { useTaskActions, useTasks } from "../task-context";
+import { useTheme } from "../theme-context";
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const monthNames = [
@@ -45,6 +46,7 @@ function getGridDates(referenceDate: Date) {
 }
 
 export default function Calender() {
+  const { colors } = useTheme();
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const today = useMemo(() => new Date(), []);
   const { tasks } = useTasks();
@@ -106,20 +108,20 @@ export default function Calender() {
   return (
     <GestureHandlerRootView style={styles.gestureRoot}>
       <PanGestureHandler onHandlerStateChange={handleSwipe} activeOffsetX={[-10, 10]} failOffsetY={[-10, 10]}>
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}> 
           <View style={styles.header}>
-            <Pressable style={styles.navButton} onPress={() => changeMonth(-1)}>
-              <Text style={styles.navButtonText}>Prev</Text>
+            <Pressable style={[styles.navButton, { backgroundColor: colors.surface }]} onPress={() => changeMonth(-1)}>
+              <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>Prev</Text>
             </Pressable>
-            <Text style={styles.title}>{monthLabel}</Text>
-            <Pressable style={styles.navButton} onPress={() => changeMonth(1)}>
-              <Text style={styles.navButtonText}>Next</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{monthLabel}</Text>
+            <Pressable style={[styles.navButton, { backgroundColor: colors.surface }]} onPress={() => changeMonth(1)}>
+              <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>Next</Text>
             </Pressable>
           </View>
 
       <View style={styles.dayNamesRow}>
         {dayNames.map((day) => (
-          <Text key={day} style={styles.dayName}>
+          <Text key={day} style={[styles.dayName, { color: colors.textSecondary }]}> 
             {day}
           </Text>
         ))}
@@ -142,65 +144,85 @@ export default function Calender() {
               key={date.toISOString()}
               style={[
                 styles.dateCell,
-                !isCurrentMonth && styles.dateCellFaded,
-                isSelected && styles.selectedCell,
-                isToday && styles.todayCell,
+                { backgroundColor: colors.surface },
+                !isCurrentMonth && { backgroundColor: colors.surfaceAlt },
+                isSelected && { backgroundColor: colors.accent, borderWidth: 1, borderColor: colors.accentInfo },
+                isToday && !isSelected && { borderWidth: 1, borderColor: colors.accentPositive },
               ]}
               onPress={() => handleSelectDate(date)}
             >
-              <Text
-                style={[
-                  styles.dateText,
-                  isCurrentMonth ? null : styles.dateTextFaded,
-                  isSelected ? styles.selectedText : isToday ? styles.todayText : null,
-                ]}
-              >
-                {date.getDate()}
-              </Text>
-              {pendingTaskCounts[formatDateKey(date)] > 0 ? (
-                <Text style={styles.pendingCount}>{pendingTaskCounts[formatDateKey(date)]}</Text>
-              ) : null}
+              <View style={styles.dateCellContent}>
+                <Text
+                  style={[
+                    styles.dateText,
+                    { color: isCurrentMonth ? colors.textPrimary : colors.muted },
+                    isSelected && { color: colors.surface },
+                    !isSelected && isToday && { color: colors.accentPositive },
+                  ]}
+                >
+                  {date.getDate()}
+                </Text>
+                {pendingTaskCounts[formatDateKey(date)] > 0 ? (
+                  <Text style={[styles.pendingCount, { color: colors.accentInfo }]}>{pendingTaskCounts[formatDateKey(date)]}</Text>
+                ) : null}
+              </View>
             </Pressable>
           );
         })}
       </View>
 
-      <Text style={styles.sectionTitle}>Tasks for {selectedDateLabel}</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Tasks for {selectedDateLabel}</Text>
       <ScrollView
         style={styles.taskList}
         contentContainerStyle={styles.taskListContent}
         keyboardShouldPersistTaps="handled"
       >
         {tasksForSelectedDate.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No tasks due on this date.</Text>
+          <View style={[styles.emptyState, { backgroundColor: colors.surface, borderColor: colors.border }] }>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No tasks due on this date.</Text>
           </View>
         ) : (
           tasksForSelectedDate.map((task) => (
             <Pressable
               key={task.id}
-              style={[styles.smallTaskCard, task.completed && styles.smallTaskCardCompleted]}
+              style={[
+                styles.smallTaskCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                task.completed && { backgroundColor: colors.surfaceAlt, borderColor: colors.border, opacity: 0.9 },
+              ]}
               onPress={() => router.push(`/task/${task.id}`)}
             >
-              <Pressable
-                style={[styles.smallTaskActionButton, task.completed ? styles.undoneButton : styles.doneButton]}
-                onPress={() => toggleTaskCompleted(task.id)}
+              <Text
+                style={[
+                  styles.smallTaskTitle,
+                  { color: task.completed ? colors.textSecondary : colors.textPrimary },
+                  task.completed && styles.smallTaskTitleCompleted,
+                ]}
+                numberOfLines={1}
               >
-                <MaterialCommunityIcons
-                  name={task.completed ? "undo" : "check"}
-                  size={16}
-                  color={task.completed ? "#0F172A" : "#FFFFFF"}
-                />
-              </Pressable>
-              <Text style={[styles.smallTaskTitle, task.completed && styles.smallTaskTitleCompleted]} numberOfLines={1}>
                 {task.title}
               </Text>
-              <Pressable
-                style={[styles.smallTaskActionButton, styles.tomorrowButton]}
-                onPress={() => pushToTomorrow(task.id)}
-              >
-                <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
-              </Pressable>
+              <View style={styles.smallTaskActions}>
+                <Pressable
+                  style={[styles.smallTaskActionButton, { backgroundColor: colors.accentInfo }]}
+                  onPress={() => pushToTomorrow(task.id)}
+                >
+                  <MaterialCommunityIcons name="arrow-right" size={18} color={colors.background} />
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.smallTaskActionButton,
+                    task.completed ? [styles.undoneButton, { backgroundColor: colors.surfaceAlt }] : [styles.doneButton, { backgroundColor: colors.accentPositive }],
+                  ]}
+                  onPress={() => toggleTaskCompleted(task.id)}
+                >
+                  <MaterialCommunityIcons
+                    name={task.completed ? "undo" : "check"}
+                    size={16}
+                    color={task.completed ? colors.textPrimary : colors.background}
+                  />
+                </Pressable>
+              </View>
             </Pressable>
           ))
         )}
@@ -214,7 +236,6 @@ export default function Calender() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0B1120",
     paddingTop: 48,
     paddingHorizontal: 12,
   },
@@ -225,19 +246,16 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   title: {
-    color: "#F8FAFC",
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
   },
   navButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#111827",
     borderRadius: 14,
   },
   navButtonText: {
-    color: "#E2E8F0",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   dayNamesRow: {
@@ -248,8 +266,7 @@ const styles = StyleSheet.create({
   dayName: {
     flex: 1,
     textAlign: "center",
-    color: "#9CA3AF",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
   },
   gridContainer: {
@@ -266,43 +283,37 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#111827",
+    padding: 8,
+  },
+  dateCellContent: {
+    flex: 1,
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   dateCellFaded: {
-    backgroundColor: "#0E1726",
   },
   dateText: {
-    color: "#F8FAFC",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
   },
   dateTextFaded: {
-    color: "#475569",
   },
   pendingCount: {
-    color: "#A5B4FC",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
     marginTop: 4,
   },
   todayCell: {
-    borderWidth: 1,
-    borderColor: "#F59E0B",
   },
   todayText: {
-    color: "#F59E0B",
   },
   selectedCell: {
-    backgroundColor: "#2563EB",
     borderWidth: 1,
-    borderColor: "#3B82F6",
   },
   selectedText: {
-    color: "#EFF6FF",
   },
   sectionTitle: {
-    color: "#E2E8F0",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     marginTop: 4,
     marginBottom: 4,
@@ -318,57 +329,51 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   smallTaskCard: {
-    backgroundColor: "#111827",
     borderRadius: 18,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#1F2937",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   smallTaskCardCompleted: {
-    backgroundColor: "#0B1220",
-    borderColor: "#334155",
     opacity: 0.9,
   },
   smallTaskActionButton: {
     width: 30,
     height: 30,
     borderRadius: 10,
-    backgroundColor: "#1E293B",
     alignItems: "center",
     justifyContent: "center",
   },
   smallTaskTitle: {
-    color: "#F8FAFC",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     flex: 1,
-    marginHorizontal: 8,
+    marginRight: 10,
   },
   smallTaskTitleCompleted: {
-    color: "#94A3B8",
     textDecorationLine: "line-through",
+  },
+  smallTaskActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   emptyState: {
     padding: 14,
     borderRadius: 18,
-    backgroundColor: "#111827",
     borderWidth: 1,
-    borderColor: "#1F2937",
     alignItems: "center",
   },
   emptyText: {
-    color: "#94A3B8",
-    fontSize: 14,
+    fontSize: 13,
   },
   actionButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 16,
-    backgroundColor: "#1E293B",
     alignItems: "center",
     justifyContent: "center",
   },
