@@ -42,16 +42,16 @@ export default function TaskReschedulePicker({
     setVisibleMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
   }, [selectedDate]);
 
-  if (!visible) {
-    return null;
-  }
-
   const monthLabel = visibleMonth.toLocaleString("default", {
     month: "long",
     year: "numeric",
   });
 
   const gridDates = useMemo(() => getMonthGrid(visibleMonth), [visibleMonth]);
+
+  if (!visible) {
+    return null;
+  }
 
   const isSameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() &&

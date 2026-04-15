@@ -1,11 +1,11 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
 import { GestureHandlerRootView, PanGestureHandler, State } from "react-native-gesture-handler";
-import TaskReschedulePicker from "../components/TaskReschedulePicker";
-import { formatDateKey, parseDateKey } from "./date-utils";
-import { useTaskActions, useTasks } from "./task-context";
+import { formatDateKey } from "../date-utils";
+import { useTaskActions, useTasks } from "../task-context";
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const monthNames = [
@@ -49,12 +49,8 @@ export default function Calender() {
   const today = useMemo(() => new Date(), []);
   const { tasks } = useTasks();
   const { toggleTaskCompleted, updateTask, deleteTask, setTaskDueDate } = useTaskActions();
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(() => today);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editDetails, setEditDetails] = useState("");
-  const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
-  const [rescheduleDate, setRescheduleDate] = useState(() => new Date());
 
   const selectedDateKey = formatDateKey(selectedDate);
   const tasksForSelectedDate = useMemo(() => {
@@ -86,54 +82,6 @@ export default function Calender() {
     });
   };
 
-  const openTaskModal = (task: Task) => {
-    setSelectedTask(task);
-    setEditTitle(task.title);
-    setEditDetails(task.details ?? "");
-    setIsRescheduleOpen(false);
-    setRescheduleDate(parseDateKey(task.dueDate) ?? new Date());
-  };
-
-  const closeTaskModal = () => {
-    setSelectedTask(null);
-    setEditTitle("");
-    setEditDetails("");
-    setIsRescheduleOpen(false);
-    setRescheduleDate(new Date());
-  };
-
-  const openRescheduleModal = () => {
-    if (!selectedTask) return;
-    setIsRescheduleOpen(true);
-    setRescheduleDate(parseDateKey(selectedTask.dueDate) ?? new Date());
-  };
-
-  const handleRescheduleConfirm = () => {
-    if (!selectedTask) return;
-    const formatted = formatDateKey(rescheduleDate);
-    setTaskDueDate(selectedTask.id, formatted);
-    setSelectedTask({ ...selectedTask, dueDate: formatted });
-    closeTaskModal();
-  };
-
-  const handleRescheduleCancel = () => {
-    setIsRescheduleOpen(false);
-    setRescheduleDate(parseDateKey(selectedTask?.dueDate ?? "") ?? new Date());
-  };
-
-  const onChangeTitle = (value: string) => {
-    setEditTitle(value);
-    if (!selectedTask) return;
-    updateTask(selectedTask.id, { title: value });
-    setSelectedTask({ ...selectedTask, title: value });
-  };
-
-  const onChangeDetails = (value: string) => {
-    setEditDetails(value);
-    if (!selectedTask) return;
-    updateTask(selectedTask.id, { details: value || undefined });
-    setSelectedTask({ ...selectedTask, details: value || undefined });
-  };
 
   const pushToTomorrow = (taskId: string) => {
     const tomorrow = new Date(selectedDate);
@@ -232,107 +180,33 @@ export default function Calender() {
             <Pressable
               key={task.id}
               style={[styles.smallTaskCard, task.completed && styles.smallTaskCardCompleted]}
-              onPress={() => openTaskModal(task)}
+              onPress={() => router.push(`/task/${task.id}`)}
             >
-              <Text style={[styles.smallTaskTitle, task.completed && styles.smallTaskTitleCompleted]}>
+              <Pressable
+                style={[styles.smallTaskActionButton, task.completed ? styles.undoneButton : styles.doneButton]}
+                onPress={() => toggleTaskCompleted(task.id)}
+              >
+                <MaterialCommunityIcons
+                  name={task.completed ? "undo" : "check"}
+                  size={18}
+                  color={task.completed ? "#0F172A" : "#FFFFFF"}
+                />
+              </Pressable>
+              <Text style={[styles.smallTaskTitle, task.completed && styles.smallTaskTitleCompleted]} numberOfLines={1}>
                 {task.title}
               </Text>
+              <Pressable
+                style={styles.smallTaskActionButton}
+                onPress={() => pushToTomorrow(task.id)}
+              >
+                <MaterialCommunityIcons name="calendar" size={18} color="#F8FAFC" />
+              </Pressable>
             </Pressable>
           ))
         )}
       </ScrollView>
         </View>
       </PanGestureHandler>
-
-      <Modal transparent visible={!!selectedTask} animationType="fade" onRequestClose={closeTaskModal}>
-        <View style={styles.modalOverlay}>
-          <Pressable style={styles.modalOverlayTouchable} onPress={closeTaskModal} />
-          <View style={styles.modalCard}>
-            <TextInput
-              value={editTitle}
-              onChangeText={onChangeTitle}
-              placeholder="Task title"
-              placeholderTextColor="#94A3B8"
-              style={[styles.input, styles.modalHeadingInput]}
-            />
-            <TextInput
-              value={editDetails}
-              onChangeText={onChangeDetails}
-              placeholder="Details (optional)"
-              placeholderTextColor="#94A3B8"
-              style={[styles.input, styles.modalDetailsInput]}
-              multiline
-              numberOfLines={4}
-            />
-            <View style={styles.modalTaskActions}>
-              {selectedTask && !selectedTask.completed && (
-                <Pressable style={styles.actionButton} onPress={openRescheduleModal}>
-                  <MaterialCommunityIcons name="calendar" size={18} color="#F8FAFC" />
-                </Pressable>
-              )}
-              <Pressable
-                style={[styles.actionButton, styles.deleteButton]}
-                onPress={() => {
-                  if (!selectedTask) return;
-                  Alert.alert(
-                    "Delete task",
-                    `Are you sure you want to delete "${selectedTask.title}"?`,
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Delete",
-                        style: "destructive",
-                        onPress: () => {
-                          deleteTask(selectedTask.id);
-                          closeTaskModal();
-                        },
-                      },
-                    ]
-                  );
-                }}>
-                <MaterialCommunityIcons name="close" size={18} color="#FFFFFF" />
-              </Pressable>
-              {selectedTask && !selectedTask.completed && (
-                <Pressable
-                  style={[styles.actionButton, styles.tomorrowButton]}
-                  onPress={() => {
-                    if (!selectedTask) return;
-                    pushToTomorrow(selectedTask.id);
-                    closeTaskModal();
-                  }}
-                >
-                  <MaterialCommunityIcons name="arrow-right" size={18} color="#F8FAFC" />
-                </Pressable>
-              )}
-              <Pressable
-                style={[
-                  styles.actionButton,
-                  selectedTask?.completed ? styles.undoneButton : styles.doneButton,
-                ]}
-                onPress={() => {
-                  if (!selectedTask) return;
-                  toggleTaskCompleted(selectedTask.id);
-                  closeTaskModal();
-                }}
-              >
-                <MaterialCommunityIcons
-                  name={selectedTask?.completed ? "undo" : "check"}
-                  size={18}
-                  color={selectedTask?.completed ? "#0F172A" : "#FFFFFF"}
-                />
-              </Pressable>
-            </View>
-            <TaskReschedulePicker
-              visible={isRescheduleOpen}
-              selectedDate={rescheduleDate}
-              currentDueDate={parseDateKey(selectedTask?.dueDate ?? "") ?? new Date()}
-              onSelectDate={setRescheduleDate}
-              onConfirm={handleRescheduleConfirm}
-              onCancel={handleRescheduleCancel}
-            />
-          </View>
-        </View>
-      </Modal>
     </GestureHandlerRootView>
   );
 }
@@ -450,17 +324,29 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#1F2937",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   smallTaskCardCompleted: {
     backgroundColor: "#0B1220",
     borderColor: "#334155",
     opacity: 0.9,
   },
+  smallTaskActionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 14,
+    backgroundColor: "#1E293B",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   smallTaskTitle: {
     color: "#F8FAFC",
     fontSize: 15,
     fontWeight: "700",
-    marginBottom: 6,
+    flex: 1,
+    marginHorizontal: 8,
   },
   smallTaskTitleCompleted: {
     color: "#94A3B8",
@@ -478,47 +364,6 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
     fontSize: 14,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
-    justifyContent: "center",
-    padding: 20,
-  },
-  modalOverlayTouchable: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  modalCard: {
-    backgroundColor: "#0F172A",
-    borderRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: "#1F2937",
-    zIndex: 1,
-  },
-  input: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: "#F8FAFC",
-    backgroundColor: "#111827",
-    marginBottom: 12,
-  },
-  modalHeadingInput: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  modalDetailsInput: {
-    minHeight: 84,
-    textAlignVertical: "top",
-  },
-  modalTaskActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 8,
-  },
   actionButton: {
     flex: 1,
     paddingVertical: 12,
@@ -529,15 +374,6 @@ const styles = StyleSheet.create({
   },
   tomorrowButton: {
     backgroundColor: "#2563EB",
-  },
-  actionButtonText: {
-    color: "#F8FAFC",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  saveButton: {
-    backgroundColor: "#2563EB",
-    marginBottom: 10,
   },
   doneButton: {
     backgroundColor: "#10B981",

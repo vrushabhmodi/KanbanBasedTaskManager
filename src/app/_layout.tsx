@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
+import { Tabs, useSegments } from "expo-router";
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -83,6 +83,8 @@ export default function RootLayout() {
   const [isCreateModalVisible, setCreateModalVisible] = useState(false);
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
+  const segments = useSegments() as string[];
+  const isTaskDetailRoute = segments.includes("task");
 
   const openCreateModal = () => setCreateModalVisible(true);
   const closeCreateModal = () => {
@@ -141,9 +143,11 @@ export default function RootLayout() {
             <Tabs.Screen name="calender" options={{ title: "Calendar" }} />
           </Tabs>
 
-          <Pressable style={styles.fab} onPress={openCreateModal}>
-            <MaterialCommunityIcons name="plus" size={32} color="#0F172A" />
-          </Pressable>
+          {!isTaskDetailRoute && (
+            <Pressable style={styles.fab} onPress={openCreateModal}>
+              <MaterialCommunityIcons name="plus" size={32} color="#0F172A" />
+            </Pressable>
+          )}
 
           <CreateTaskModal
             visible={isCreateModalVisible}
