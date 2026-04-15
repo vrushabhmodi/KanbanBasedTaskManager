@@ -188,7 +188,7 @@ export default function Calender() {
               >
                 <MaterialCommunityIcons
                   name={task.completed ? "undo" : "check"}
-                  size={18}
+                  size={16}
                   color={task.completed ? "#0F172A" : "#FFFFFF"}
                 />
               </Pressable>
@@ -199,7 +199,7 @@ export default function Calender() {
                 style={styles.smallTaskActionButton}
                 onPress={() => pushToTomorrow(task.id)}
               >
-                <MaterialCommunityIcons name="calendar" size={18} color="#F8FAFC" />
+                <MaterialCommunityIcons name="calendar" size={16} color="#F8FAFC" />
               </Pressable>
             </Pressable>
           ))
@@ -334,9 +334,9 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   smallTaskActionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     backgroundColor: "#1E293B",
     alignItems: "center",
     justifyContent: "center",

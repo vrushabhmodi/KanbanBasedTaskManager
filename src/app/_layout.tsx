@@ -6,6 +6,16 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { formatDateKey } from "./date-utils";
 import { TaskProvider, useTaskActions } from "./task-context";
 
+if (Text.defaultProps == null) {
+  Text.defaultProps = {};
+}
+Text.defaultProps.style = [{ fontFamily: "Arial" }, Text.defaultProps.style];
+
+if (TextInput.defaultProps == null) {
+  TextInput.defaultProps = {};
+}
+TextInput.defaultProps.style = [{ fontFamily: "Arial" }, TextInput.defaultProps.style];
+
 function CreateTaskModal({
   visible,
   onClose,
