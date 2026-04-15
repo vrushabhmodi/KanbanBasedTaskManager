@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTheme } from "../app/theme-context";
 
 type TaskReschedulePickerProps = {
   visible: boolean;
@@ -42,6 +43,7 @@ export default function TaskReschedulePicker({
     setVisibleMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
   }, [selectedDate]);
 
+  const { colors } = useTheme();
   const monthLabel = visibleMonth.toLocaleString("default", {
     month: "long",
     year: "numeric",
@@ -59,23 +61,23 @@ export default function TaskReschedulePicker({
     a.getDate() === b.getDate();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }] }>
       <View style={styles.labelRow}>
-        <Text style={styles.label}>Reschedule task</Text>
-        <MaterialCommunityIcons name="calendar" size={18} color="#F8FAFC" />
+        <Text style={[styles.label, { color: colors.textPrimary }]}>Reschedule task</Text>
+        <MaterialCommunityIcons name="calendar" size={18} color={colors.textPrimary} />
       </View>
       <View style={styles.monthRow}>
-        <Pressable style={styles.monthButton} onPress={() => setVisibleMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
-          <Text style={styles.monthButtonText}>{"<"}</Text>
+        <Pressable style={[styles.monthButton, { backgroundColor: colors.surfaceAlt }]} onPress={() => setVisibleMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
+          <Text style={[styles.monthButtonText, { color: colors.textPrimary }]}>{"<"}</Text>
         </Pressable>
-        <Text style={styles.monthLabel}>{monthLabel}</Text>
-        <Pressable style={styles.monthButton} onPress={() => setVisibleMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
-          <Text style={styles.monthButtonText}>{">"}</Text>
+        <Text style={[styles.monthLabel, { color: colors.textPrimary }]}>{monthLabel}</Text>
+        <Pressable style={[styles.monthButton, { backgroundColor: colors.surfaceAlt }]} onPress={() => setVisibleMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
+          <Text style={[styles.monthButtonText, { color: colors.textPrimary }]}>{">"}</Text>
         </Pressable>
       </View>
       <View style={styles.weekRow}>
         {dayNames.map((day) => (
-          <Text key={day} style={styles.weekDayText}>
+          <Text key={day} style={[styles.weekDayText, { color: colors.textSecondary }]}>
             {day}
           </Text>
         ))}
@@ -91,17 +93,18 @@ export default function TaskReschedulePicker({
               key={date.toISOString()}
               style={[
                 styles.dateCell,
-                !isCurrentMonth && styles.dateCellFaded,
-                isCurrentDueDate && styles.dateCellCurrentDue,
-                isSelected && styles.dateCellSelected,
+                { backgroundColor: colors.surface },
+                !isCurrentMonth && { backgroundColor: colors.surfaceAlt },
+                isCurrentDueDate && { borderColor: colors.accentInfo },
+                isSelected && { backgroundColor: colors.accent, borderColor: colors.accent },
               ]}
               onPress={() => onSelectDate(date)}
             >
               <Text
                 style={[
                   styles.dateText,
-                  !isCurrentMonth && styles.dateTextFaded,
-                  isSelected && styles.dateTextSelected,
+                  { color: isCurrentMonth ? colors.textPrimary : colors.muted },
+                  isSelected && { color: colors.background },
                 ]}
               >
                 {date.getDate()}
@@ -111,11 +114,11 @@ export default function TaskReschedulePicker({
         })}
       </View>
       <View style={styles.buttonRow}>
-        <Pressable style={[styles.button, styles.cancelButton]} onPress={onCancel}>
-          <Text style={styles.buttonText}>Cancel</Text>
+        <Pressable style={[styles.button, styles.cancelButton, { backgroundColor: colors.surfaceAlt }]} onPress={onCancel}>
+          <Text style={[styles.buttonText, { color: colors.textPrimary }]}>Cancel</Text>
         </Pressable>
-        <Pressable style={[styles.button, styles.confirmButton]} onPress={onConfirm}>
-          <Text style={styles.buttonText}>Confirm</Text>
+        <Pressable style={[styles.button, styles.confirmButton, { backgroundColor: colors.accentPositive }]} onPress={onConfirm}>
+          <Text style={[styles.buttonText, { color: colors.background }]}>Confirm</Text>
         </Pressable>
       </View>
     </View>
@@ -140,7 +143,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: "#E2E8F0",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
   },
   monthRow: {
@@ -156,12 +159,12 @@ const styles = StyleSheet.create({
   },
   monthButtonText: {
     color: "#F8FAFC",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   monthLabel: {
     color: "#E2E8F0",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
   },
   weekRow: {
@@ -173,7 +176,7 @@ const styles = StyleSheet.create({
     width: "14.28%",
     textAlign: "center",
     color: "#94A3B8",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
   },
   gridContainer: {
@@ -203,7 +206,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     color: "#F8FAFC",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
   },
   dateTextFaded: {
@@ -231,7 +234,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#F8FAFC",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
   },
 });

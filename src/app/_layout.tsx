@@ -5,16 +5,22 @@ import { Keyboard, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { formatDateKey } from "./date-utils";
 import { TaskProvider, useTaskActions } from "./task-context";
+import { ThemeProvider, useTheme } from "./theme-context";
 
-if (Text.defaultProps == null) {
-  Text.defaultProps = {};
-}
-Text.defaultProps.style = [{ fontFamily: "Arial" }, Text.defaultProps.style];
+const TextAny = Text as any;
+const TextInputAny = TextInput as any;
 
-if (TextInput.defaultProps == null) {
-  TextInput.defaultProps = {};
+if (TextAny.defaultProps == null) {
+  TextAny.defaultProps = {};
 }
-TextInput.defaultProps.style = [{ fontFamily: "Arial" }, TextInput.defaultProps.style];
+TextAny.defaultProps.style = [{ fontFamily: "Arial" }, TextAny.defaultProps.style];
+TextAny.defaultProps.allowFontScaling = false;
+
+if (TextInputAny.defaultProps == null) {
+  TextInputAny.defaultProps = {};
+}
+TextInputAny.defaultProps.style = [{ fontFamily: "Arial" }, TextInputAny.defaultProps.style];
+TextInputAny.defaultProps.allowFontScaling = false;
 
 function CreateTaskModal({
   visible,
@@ -32,6 +38,7 @@ function CreateTaskModal({
   setDetails: (value: string) => void;
 }) {
   const { addTask } = useTaskActions();
+  const { colors } = useTheme();
   const titleInputRef = useRef<TextInput>(null);
 
   const focusTitleInput = () => {
@@ -78,17 +85,17 @@ function CreateTaskModal({
       onRequestClose={onClose}
       onShow={focusTitleInput}
     >
-      <View style={styles.modalOverlay}>
+      <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}> 
         <Pressable style={styles.modalOverlayTouchable} onPress={onClose} />
-        <View style={styles.modalCard}>
-          <Text style={styles.modalHeading}>Create new task</Text>
+        <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+          <Text style={[styles.modalHeading, { color: colors.textPrimary }]}>Create new task</Text>
           <TextInput
             ref={titleInputRef}
             value={title}
             onChangeText={setTitle}
             placeholder="Task title"
-            placeholderTextColor="#94A3B8"
-            style={styles.input}
+            placeholderTextColor={colors.placeholder}
+            style={[styles.input, { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.textPrimary }]}
             autoFocus
             showSoftInputOnFocus
           />
@@ -96,17 +103,17 @@ function CreateTaskModal({
             value={details}
             onChangeText={setDetails}
             placeholder="Details (optional)"
-            placeholderTextColor="#94A3B8"
-            style={[styles.input, styles.inputTextarea]}
+            placeholderTextColor={colors.placeholder}
+            style={[styles.input, styles.inputTextarea, { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.textPrimary }]}
             multiline
             numberOfLines={3}
           />
           <Pressable
-            style={[styles.createButton, !title.trim() && styles.createButtonDisabled]}
+            style={[styles.createButton, { backgroundColor: colors.accent }, !title.trim() && styles.createButtonDisabled]}
             onPress={handleCreateTask}
             disabled={!title.trim()}
           >
-            <Text style={styles.createButtonText}>Create task</Text>
+            <Text style={[styles.createButtonText, { color: colors.accentText }]}>Create task</Text>
           </Pressable>
         </View>
       </View>
@@ -114,7 +121,8 @@ function CreateTaskModal({
   );
 }
 
-export default function RootLayout() {
+function RootLayoutContent() {
+  const { colors } = useTheme();
   const [isCreateModalVisible, setCreateModalVisible] = useState(false);
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
@@ -129,29 +137,37 @@ export default function RootLayout() {
   };
 
   return (
+    <View style={[styles.root, { backgroundColor: colors.background }]}> 
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+
+      {!isTaskDetailRoute && (
+        <Pressable style={[styles.fab, { backgroundColor: colors.accent }]} onPress={openCreateModal}>
+          <MaterialCommunityIcons name="plus" size={32} color={colors.accentText} />
+        </Pressable>
+      )}
+
+      <CreateTaskModal
+        visible={isCreateModalVisible}
+        onClose={closeCreateModal}
+        title={title}
+        details={details}
+        setTitle={setTitle}
+        setDetails={setDetails}
+      />
+    </View>
+  );
+}
+
+export default function RootLayout() {
+  return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <TaskProvider>
-        <View style={styles.root}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
-
-          {!isTaskDetailRoute && (
-            <Pressable style={styles.fab} onPress={openCreateModal}>
-              <MaterialCommunityIcons name="plus" size={32} color="#0F172A" />
-            </Pressable>
-          )}
-
-          <CreateTaskModal
-            visible={isCreateModalVisible}
-            onClose={closeCreateModal}
-            title={title}
-            details={details}
-            setTitle={setTitle}
-            setDetails={setDetails}
-          />
-        </View>
-      </TaskProvider>
+      <ThemeProvider>
+        <TaskProvider>
+          <RootLayoutContent />
+        </TaskProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }
@@ -197,7 +213,7 @@ const styles = StyleSheet.create({
   },
   modalHeading: {
     color: "#F8FAFC",
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
     marginBottom: 16,
   },
@@ -229,6 +245,6 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: "#0F172A",
     fontWeight: "700",
-    fontSize: 16,
+    fontSize: 14,
   },
 });

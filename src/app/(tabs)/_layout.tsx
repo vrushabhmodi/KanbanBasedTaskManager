@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { formatDateKey } from "../date-utils";
+import { useTheme } from "../theme-context";
 
 const tabBarColors = {
   active: "#F59E0B",
@@ -10,16 +11,18 @@ const tabBarColors = {
 };
 
 export default function TabsLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: tabBarColors.active,
-        tabBarInactiveTintColor: tabBarColors.inactive,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarShowLabel: true,
         tabBarStyle: {
-          backgroundColor: tabBarColors.background,
-          borderTopColor: tabBarColors.border,
+          backgroundColor: colors.tabBar,
+          borderTopColor: colors.tabBarBorder,
           height: 72,
           marginHorizontal: 0,
           marginBottom: 0,
@@ -38,12 +41,17 @@ export default function TabsLayout() {
           alignItems: "center",
         },
         tabBarLabelStyle: {
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: "700",
           marginBottom: 4,
         },
         tabBarIcon: ({ color, size }) => {
-          const iconName = route.name === "today" ? "calendar-today" : "calendar-check";
+          const iconName =
+            route.name === "today"
+              ? "calendar-today"
+              : route.name === "calender"
+              ? "calendar-check"
+              : "cog";
           return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
         },
       })}
@@ -59,6 +67,7 @@ export default function TabsLayout() {
         })}
       />
       <Tabs.Screen name="calender" options={{ title: "Calender", tabBarShowLabel: true }} />
+      <Tabs.Screen name="settings" options={{ title: "Settings", tabBarShowLabel: true }} />
     </Tabs>
   );
 }
