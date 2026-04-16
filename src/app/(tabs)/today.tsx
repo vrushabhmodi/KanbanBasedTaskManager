@@ -120,11 +120,6 @@ export default function Today() {
     [selectedDate]
   );
 
-  const pendingTasksCount = useMemo(
-    () => tasksForSelectedDate.filter((task) => !task.completed).length,
-    [tasksForSelectedDate]
-  );
-
   const pushToTomorrow = (taskId: string) => {
     const tomorrow = new Date(selectedDate);
     tomorrow.setDate(tomorrow.getDate() + 1);

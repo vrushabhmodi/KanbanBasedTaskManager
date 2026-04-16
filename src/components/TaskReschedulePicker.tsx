@@ -39,7 +39,6 @@ export default function TaskReschedulePicker({
   const [visibleMonth, setVisibleMonth] = useState(
     new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
   );
-  const [monthDirection, setMonthDirection] = useState(1);
   const animation = useRef(new Animated.Value(0)).current;
   const monthAnimation = useRef(new Animated.Value(1)).current;
 

@@ -3,13 +3,6 @@ import { Tabs } from "expo-router";
 import { formatDateKey } from "../date-utils";
 import { useTheme } from "../theme-context";
 
-const tabBarColors = {
-  active: "#F59E0B",
-  inactive: "#D1D5DB",
-  background: "#0F172A",
-  border: "#334155",
-};
-
 export default function TabsLayout() {
   const { colors } = useTheme();
 

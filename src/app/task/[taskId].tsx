@@ -25,14 +25,13 @@ export default function TaskDetailScreen() {
   const [editDetails, setEditDetails] = useState("");
   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState(() => new Date());
-  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!task) return;
     setEditTitle(task.title);
     setEditDetails(task.details ?? "");
     setRescheduleDate(parseDateKey(task.dueDate) ?? new Date());
-  }, [task?.id]);
+  }, [task]);
 
   useEffect(() => {
     Animated.timing(contentAnimation, {
@@ -103,7 +102,6 @@ export default function TaskDetailScreen() {
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            setIsDeleting(true);
             Animated.timing(contentAnimation, {
               toValue: 0,
               duration: 180,
