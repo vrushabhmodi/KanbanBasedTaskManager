@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Keyboard, Modal, Platform, Pressable, StyleSheet, Text, TextInput, UIManager, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { formatDateKey } from "./date-utils";
+import { CreateTaskDateProvider, useCreateTaskDate } from "./create-task-date-context";
 import { TaskProvider, useTaskActions } from "./task-context";
 import { ThemeProvider, useTheme } from "./theme-context";
 
@@ -14,6 +15,7 @@ function CreateTaskModal({
   details,
   setTitle,
   setDetails,
+  dueDate,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -21,6 +23,7 @@ function CreateTaskModal({
   details: string;
   setTitle: (value: string) => void;
   setDetails: (value: string) => void;
+  dueDate: string;
 }) {
   const { addTask } = useTaskActions();
   const { colors } = useTheme();
@@ -91,7 +94,7 @@ function CreateTaskModal({
     addTask({
       title: title.trim(),
       details: details.trim() || undefined,
-      dueDate: formatDateKey(new Date()),
+      dueDate,
     });
 
     setTitle("");
@@ -159,12 +162,16 @@ function RootLayoutContent() {
   const [details, setDetails] = useState("");
   const segments = useSegments() as string[];
   const isTaskDetailRoute = segments.includes("task");
+  const isCalendarRoute = segments.includes("calender");
+  const { calendarSelectedDate } = useCreateTaskDate();
 
   useEffect(() => {
     if (Platform.OS === "android") {
       UIManager.setLayoutAnimationEnabledExperimental?.(true);
     }
   }, []);
+
+  const createTaskDueDate = isCalendarRoute && calendarSelectedDate ? calendarSelectedDate : formatDateKey(new Date());
 
   const openCreateModal = () => setCreateModalVisible(true);
   const closeCreateModal = () => {
@@ -199,6 +206,7 @@ function RootLayoutContent() {
         details={details}
         setTitle={setTitle}
         setDetails={setDetails}
+        dueDate={createTaskDueDate}
       />
     </View>
   );
@@ -208,9 +216,11 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
-        <TaskProvider>
-          <RootLayoutContent />
-        </TaskProvider>
+        <CreateTaskDateProvider>
+          <TaskProvider>
+            <RootLayoutContent />
+          </TaskProvider>
+        </CreateTaskDateProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );
