@@ -55,7 +55,7 @@ export default function TabsLayout() {
         listeners={({ navigation }) => ({
           tabPress: (event) => {
             event.preventDefault();
-            navigation.navigate("today", { date: formatDateKey(new Date()) });
+            navigation.jumpTo("today", { date: formatDateKey(new Date()) });
           },
         })}
       />

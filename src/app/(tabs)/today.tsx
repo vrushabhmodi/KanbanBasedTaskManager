@@ -2,6 +2,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
+import { PanGestureHandler, State } from "react-native-gesture-handler";
 import TaskReschedulePicker from "../../components/TaskReschedulePicker";
 import { formatDateKey, parseDateKey, parseSelectedDate } from "../date-utils";
 import { useTaskActions, useTasks } from "../task-context";
@@ -120,6 +122,26 @@ export default function Today() {
     [selectedDate]
   );
 
+  const today = new Date();
+  const isToday =
+    selectedDate.getFullYear() === today.getFullYear() &&
+    selectedDate.getMonth() === today.getMonth() &&
+    selectedDate.getDate() === today.getDate();
+
+  const handleSwipe = ({ nativeEvent }: PanGestureHandlerGestureEvent) => {
+    if (nativeEvent.state !== State.END) return;
+
+    const { translationX, translationY } = nativeEvent;
+    const isHorizontalSwipe =
+      Math.abs(translationX) > Math.abs(translationY) && Math.abs(translationX) > 50;
+
+    if (!isHorizontalSwipe) return;
+
+    const nextDate = new Date(selectedDate);
+    nextDate.setDate(nextDate.getDate() + (translationX < 0 ? 1 : -1));
+    router.push(`/today?date=${formatDateKey(nextDate)}`);
+  };
+
   const pushToTomorrow = (taskId: string) => {
     const tomorrow = new Date(selectedDate);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -127,14 +149,24 @@ export default function Today() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}> 
-      <Text style={[styles.heading, { color: colors.textPrimary }]}>Today</Text>
+    <PanGestureHandler onHandlerStateChange={handleSwipe} activeOffsetX={[-10, 10]} failOffsetY={[-10, 10]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}> 
+        <Text style={[styles.heading, { color: colors.textPrimary }]}>Day Planner</Text>
 
-      <View style={styles.dateInfoCompact}>
-        <Text style={[styles.dateCompact, { color: colors.textSecondary }]}>{formattedDate}</Text>
-      </View>
+        <View style={[
+          styles.dateInfoCompact,
+          styles.dateInfoBlock,
+        ]}>
+          <Text style={[
+            styles.dateCompact,
+            isToday ? [styles.todayDateText, { color: colors.accent }] : { color: colors.textSecondary },
+          ]}
+          >
+            {formattedDate}
+          </Text>
+        </View>
 
-      <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Tasks</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Tasks</Text>
       <ScrollView
         style={styles.taskList}
         contentContainerStyle={styles.taskListContent}
@@ -160,59 +192,59 @@ export default function Today() {
                 onPress={() => router.push(`/task/${task.id}`)}
               >
                 <View style={styles.taskCardHeader}>
-                <Text style={[styles.taskTitle, { color: colors.textPrimary }, task.completed && { color: colors.textSecondary }]}>
-                {task.title}
-              </Text>
-              <View style={styles.taskActions}>
-                {!task.completed && (
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.actionButton,
-                      { backgroundColor: colors.surfaceAlt },
-                      pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
-                    ]}
-                    onPress={() => openReschedule(task.id)}
-                  >
-                    <MaterialCommunityIcons name="calendar" size={16} color={colors.textPrimary} />
-                  </Pressable>
-                )}
-                {!task.completed && (
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.actionButton,
-                      styles.tomorrowButton,
-                      { backgroundColor: colors.accentInfo },
-                      pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
-                    ]}
-                    onPress={() => {
-                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                      pushToTomorrow(task.id);
-                    }}
-                  >
-                    <MaterialCommunityIcons name="arrow-right" size={16} color={colors.background} />
-                  </Pressable>
-                )}
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    task.completed ? [styles.undoneButton, { backgroundColor: colors.surfaceAlt }] : [styles.doneButton, { backgroundColor: colors.accentPositive }],
-                    pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
-                  ]}
-                  onPress={() => {
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    toggleTaskCompleted(task.id);
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name={task.completed ? "undo" : "check"}
-                    size={16}
-                    color={task.completed ? colors.textPrimary : colors.background}
-                  />
-                </Pressable>
-              </View>
-            </View>
-          </Pressable>
-          </AnimatedTaskCard>
+                  <Text style={[styles.taskTitle, { color: colors.textPrimary }, task.completed && { color: colors.textSecondary }]}> 
+                    {task.title}
+                  </Text>
+                  <View style={styles.taskActions}>
+                    {!task.completed && (
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.actionButton,
+                          { backgroundColor: colors.surfaceAlt },
+                          pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                        ]}
+                        onPress={() => openReschedule(task.id)}
+                      >
+                        <MaterialCommunityIcons name="calendar" size={16} color={colors.textPrimary} />
+                      </Pressable>
+                    )}
+                    {!task.completed && (
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.actionButton,
+                          styles.tomorrowButton,
+                          { backgroundColor: colors.accentInfo },
+                          pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                        ]}
+                        onPress={() => {
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                          pushToTomorrow(task.id);
+                        }}
+                      >
+                        <MaterialCommunityIcons name="arrow-right" size={16} color={colors.background} />
+                      </Pressable>
+                    )}
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.actionButton,
+                        task.completed ? [styles.undoneButton, { backgroundColor: colors.surfaceAlt }] : [styles.doneButton, { backgroundColor: colors.accentPositive }],
+                        pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                      ]}
+                      onPress={() => {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        toggleTaskCompleted(task.id);
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={task.completed ? "undo" : "check"}
+                        size={16}
+                        color={task.completed ? colors.textPrimary : colors.background}
+                      />
+                    </Pressable>
+                  </View>
+                </View>
+              </Pressable>
+            </AnimatedTaskCard>
           ))
         )}
       </ScrollView>
@@ -226,6 +258,7 @@ export default function Today() {
         onCancel={closeReschedule}
       />
     </View>
+  </PanGestureHandler>
   );
 }
 
@@ -243,9 +276,18 @@ const styles = StyleSheet.create({
   dateInfoCompact: {
     marginBottom: 14,
   },
+  dateInfoBlock: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    alignSelf: "flex-start",
+  },
   dateCompact: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  todayDateText: {
+    fontWeight: "700",
   },
   sectionTitle: {
     fontSize: 18,
