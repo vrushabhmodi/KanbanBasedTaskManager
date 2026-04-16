@@ -271,14 +271,15 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: "700",
-    marginBottom: 18,
+    marginBottom: 2,
   },
   dateInfoCompact: {
-    marginBottom: 14,
+    marginBottom: 8,
   },
   dateInfoBlock: {
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingLeft: 0,
+    paddingRight: 10,
     borderRadius: 14,
     alignSelf: "flex-start",
   },
