@@ -133,19 +133,21 @@ export default function Calender() {
   };
 
   return (
-    <PanGestureHandler onHandlerStateChange={handleSwipe} activeOffsetX={[-10, 10]} failOffsetY={[-10, 10]}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}> 
-          <View style={styles.header}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.navButton,
-                { backgroundColor: colors.surface },
-                pressed && { transform: [{ scale: 0.97 }], opacity: 0.88 },
-              ]}
-              onPress={() => changeMonth(-1)}
-            >
-              <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>Prev</Text>
-            </Pressable>
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
+      <View style={styles.calendarPanel}>
+        <PanGestureHandler onHandlerStateChange={handleSwipe} activeOffsetX={[-10, 10]} failOffsetY={[-10, 10]}>
+          <View>
+            <View style={styles.header}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.navButton,
+                  { backgroundColor: colors.surface },
+                  pressed && { transform: [{ scale: 0.97 }], opacity: 0.88 },
+                ]}
+                onPress={() => changeMonth(-1)}
+              >
+                <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>Prev</Text>
+              </Pressable>
             <Animated.Text
               style={[
                 styles.title,
@@ -177,60 +179,63 @@ export default function Calender() {
             </Pressable>
           </View>
 
-      <Animated.View style={animatedPanelStyle}>
-        <View style={styles.dayNamesRow}>
-          {dayNames.map((day) => (
-            <Text key={day} style={[styles.dayName, { color: colors.textSecondary }]}> 
-              {day}
-            </Text>
-          ))}
-        </View>
-
-        <View style={styles.gridContainer}>
-        {gridDates.map((date) => {
-          const isToday =
-            date.getFullYear() === today.getFullYear() &&
-            date.getMonth() === today.getMonth() &&
-            date.getDate() === today.getDate();
-          const isSelected =
-            date.getFullYear() === selectedDate.getFullYear() &&
-            date.getMonth() === selectedDate.getMonth() &&
-            date.getDate() === selectedDate.getDate();
-          const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
-
-          return (
-            <Pressable
-              key={date.toISOString()}
-              style={({ pressed }) => [
-                styles.dateCell,
-                { backgroundColor: colors.surface },
-                !isCurrentMonth && { backgroundColor: colors.surfaceAlt },
-                isSelected && { backgroundColor: colors.accent, borderWidth: 1, borderColor: colors.accentInfo },
-                isToday && !isSelected && { borderWidth: 1, borderColor: colors.accentPositive },
-                pressed && { transform: [{ scale: 0.96 }], opacity: 0.92 },
-              ]}
-              onPress={() => handleSelectDate(date)}
-            >
-              <View style={styles.dateCellContent}>
-                <Text
-                  style={[
-                    styles.dateText,
-                    { color: isCurrentMonth ? colors.textPrimary : colors.muted },
-                    isSelected && { color: colors.surface },
-                    !isSelected && isToday && { color: colors.accentPositive },
-                  ]}
-                >
-                  {date.getDate()}
+          <Animated.View style={animatedPanelStyle}>
+            <View style={styles.dayNamesRow}>
+              {dayNames.map((day) => (
+                <Text key={day} style={[styles.dayName, { color: colors.textSecondary }]}> 
+                  {day}
                 </Text>
-                {pendingTaskCounts[formatDateKey(date)] > 0 ? (
-                  <Text style={[styles.pendingCount, { color: colors.accentInfo }]}>{pendingTaskCounts[formatDateKey(date)]}</Text>
-                ) : null}
-              </View>
-            </Pressable>
-          );
-        })}
+              ))}
+            </View>
+
+            <View style={styles.gridContainer}>
+              {gridDates.map((date) => {
+                const isToday =
+                  date.getFullYear() === today.getFullYear() &&
+                  date.getMonth() === today.getMonth() &&
+                  date.getDate() === today.getDate();
+                const isSelected =
+                  date.getFullYear() === selectedDate.getFullYear() &&
+                  date.getMonth() === selectedDate.getMonth() &&
+                  date.getDate() === selectedDate.getDate();
+                const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
+
+                return (
+                  <Pressable
+                    key={date.toISOString()}
+                    style={({ pressed }) => [
+                      styles.dateCell,
+                      { backgroundColor: colors.surface },
+                      !isCurrentMonth && { backgroundColor: colors.surfaceAlt },
+                      isSelected && { backgroundColor: colors.accent, borderWidth: 1, borderColor: colors.accentInfo },
+                      isToday && !isSelected && { borderWidth: 1, borderColor: colors.accentPositive },
+                      pressed && { transform: [{ scale: 0.96 }], opacity: 0.92 },
+                    ]}
+                    onPress={() => handleSelectDate(date)}
+                  >
+                    <View style={styles.dateCellContent}>
+                      <Text
+                        style={[
+                          styles.dateText,
+                          { color: isCurrentMonth ? colors.textPrimary : colors.muted },
+                          isSelected && { color: colors.surface },
+                          !isSelected && isToday && { color: colors.accentPositive },
+                        ]}
+                      >
+                        {date.getDate()}
+                      </Text>
+                      {pendingTaskCounts[formatDateKey(date)] > 0 ? (
+                        <Text style={[styles.pendingCount, { color: colors.accentInfo }]}>{pendingTaskCounts[formatDateKey(date)]}</Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Animated.View>
+        </View>
+      </PanGestureHandler>
       </View>
-      </Animated.View>
 
       <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Tasks for {selectedDateLabel}</Text>
       <ScrollView
@@ -298,8 +303,7 @@ export default function Calender() {
           ))
         )}
       </ScrollView>
-        </View>
-      </PanGestureHandler>
+    </View>
   );
 }
 
@@ -432,5 +436,8 @@ const styles = StyleSheet.create({
   },
   undoneButton: {
     backgroundColor: "#E2E8F0",
+  },
+  calendarPanel: {
+    overflow: "hidden",
   },
 });
