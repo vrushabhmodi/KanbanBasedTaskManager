@@ -5,6 +5,7 @@ import { Animated, Easing, Keyboard, Modal, Platform, Pressable, StyleSheet, Tex
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { CreateTaskDateProvider, useCreateTaskDate } from "./create-task-date-context";
 import { formatDateKey } from "./date-utils";
+import { NotificationProvider } from "./notification-context";
 import { TaskProvider, useTaskActions } from "./task-context";
 import { ThemeProvider, useTheme } from "./theme-context";
 
@@ -218,7 +219,9 @@ export default function RootLayout() {
       <ThemeProvider>
         <CreateTaskDateProvider>
           <TaskProvider>
-            <RootLayoutContent />
+            <NotificationProvider>
+              <RootLayoutContent />
+            </NotificationProvider>
           </TaskProvider>
         </CreateTaskDateProvider>
       </ThemeProvider>
