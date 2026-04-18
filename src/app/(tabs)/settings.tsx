@@ -1,5 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import * as Notifications from "expo-notifications";
+import { useEffect, useState } from "react";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useNotificationSettings } from "../notification-context";
 import { useTheme } from "../theme-context";
 
@@ -17,6 +19,7 @@ const themeOptions: ThemeOption[] = [
 
 export default function SettingsScreen() {
   const { themePreference, setThemePreference, colors } = useTheme();
+  const [repeatIntervalInput, setRepeatIntervalInput] = useState("");
 
   const {
     enabled,
@@ -24,6 +27,8 @@ export default function SettingsScreen() {
     startTime,
     endTime,
     repeatIntervalHours,
+    permissionDenied,
+    scheduledCount,
     setNotificationEnabled,
     setRepeatEnabled,
     setStartTime,
@@ -31,12 +36,22 @@ export default function SettingsScreen() {
     setRepeatIntervalHours,
   } = useNotificationSettings();
 
+  // Sync local input state with setting value
+  useEffect(() => {
+    setRepeatIntervalInput(repeatIntervalHours?.toString() || "1");
+  }, [repeatIntervalHours]);
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}> 
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+    >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         stickyHeaderIndices={[0]}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.headerSection, { backgroundColor: colors.background }]}> 
           <Text style={[styles.heading, { color: colors.textPrimary }]}>Settings</Text>
@@ -89,6 +104,32 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {permissionDenied && (
+          <Text style={[styles.permissionWarning, { color: colors.danger }]}>Notification permission is blocked. Allow notifications from your device settings to use reminders.</Text>
+        )}
+
+        {enabled && (
+          <Text style={[styles.scheduledInfo, { color: colors.textSecondary }]}>{scheduledCount} notification{scheduledCount !== 1 ? 's' : ''} scheduled.</Text>
+        )}
+
+        {enabled && (
+          <Pressable
+            style={[styles.testButton, { backgroundColor: colors.accent }]}
+            onPress={async () => {
+              await Notifications.scheduleNotificationAsync({
+                content: {
+                  title: "Test notification",
+                  body: "This is a test reminder.",
+                  sound: "default",
+                },
+                trigger: null, // Send immediately
+              });
+            }}
+          >
+            <Text style={[styles.testButtonText, { color: colors.accentText }]}>Send test notification</Text>
+          </Pressable>
+        )}
+
         <View style={[styles.optionSetting, !enabled && styles.disabledOption]}>
           <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>Start time</Text>
           <TextInput
@@ -133,11 +174,21 @@ export default function SettingsScreen() {
           <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>Repeat every</Text>
           <View style={styles.repeatRow}>
             <TextInput
-              value={repeatIntervalHours.toString()}
+              value={repeatIntervalInput}
               onChangeText={(value) => {
+                // Allow empty values during typing
                 const digits = value.replace(/[^0-9]/g, "");
-                const number = digits ? Math.max(1, Number(digits)) : 1;
+                setRepeatIntervalInput(digits);
+              }}
+              onBlur={() => {
+                // When focus is lost, ensure minimum value of 1
+                const number = Math.max(1, Number(repeatIntervalInput) || 1);
                 setRepeatIntervalHours(number);
+                setRepeatIntervalInput(number.toString());
+              }}
+              onFocus={() => {
+                // When focused, sync with current setting value
+                setRepeatIntervalInput(repeatIntervalHours?.toString() || "1");
               }}
               placeholder="2"
               placeholderTextColor={colors.placeholder}
@@ -153,7 +204,7 @@ export default function SettingsScreen() {
         <Text style={[styles.optionDescription, { color: colors.textSecondary, marginTop: 8 }]}>Notifications are only sent between the start and end times, and only if you have pending tasks today.</Text>
       </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -243,6 +294,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
   },
+  permissionWarning: {
+    marginTop: 12,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  scheduledInfo: {
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: "500",
+    lineHeight: 18,
+  },
+  testButton: {
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  testButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
   headerSection: {
     paddingBottom: 16,
     borderBottomWidth: 1,
@@ -250,7 +324,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   disabledOption: {
     opacity: 0.55,
