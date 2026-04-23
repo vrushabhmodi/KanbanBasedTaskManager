@@ -40,7 +40,14 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access the microphone",
+          "speechRecognitionPermission": "Allow $(PRODUCT_NAME) to use Speech Recognition"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

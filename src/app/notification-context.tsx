@@ -172,6 +172,10 @@ async function scheduleTaskNotifications(enabled: boolean, repeatEnabled: boolea
     return 0;
   }
 
+  if (Platform.OS === "web") {
+    return 0;
+  }
+
   const minutes = getUpcomingMinuteValues(startTime, endTime, repeatIntervalHours, repeatEnabled);
   if (minutes.length === 0) {
     return 0;
@@ -284,7 +288,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       }
 
       if (!enabled) {
-        await Notifications.cancelAllScheduledNotificationsAsync();
+        if (Platform.OS !== "web") {
+          await Notifications.cancelAllScheduledNotificationsAsync();
+        }
         setScheduledCount(0);
         return;
       }
