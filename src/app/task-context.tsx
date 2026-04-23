@@ -18,56 +18,7 @@ const TaskContext = createContext<TaskContextType | null>(null);
 const TASKS_STORAGE_KEY = "KBTM_TASKS";
 const DELETED_TASKS_STORAGE_KEY = "KBTM_DELETED_TASKS";
 
-const initialTasks: Task[] = [
-  {
-    id: "task-1",
-    title: "Write the daily plan",
-    details: "Capture the main priorities and schedule tomorrow's follow-up items.",
-    dueDate: formatDateKey(new Date()),
-    completed: false,
-    lastModified: new Date().toISOString(),
-  },
-  {
-    id: "task-2",
-    title: "Review code for the calendar screen",
-    details: "Check the swipe gestures, date rendering, and tab navigation behavior.",
-    dueDate: formatDateKey(new Date()),
-    completed: false,
-    lastModified: new Date().toISOString(),
-  },
-  {
-    id: "task-3",
-    title: "Prepare notes for tomorrow",
-    details: "Draft the agenda, attach files, and set a reminder for the first meeting.",
-    dueDate: formatDateKey(new Date()),
-    completed: false,
-    lastModified: new Date().toISOString(),
-  },
-  {
-    id: "task-4",
-    title: "Sync with the design review",
-    details: "Confirm the latest color and spacing updates before next sprint.",
-    dueDate: formatDateKey(new Date()),
-    completed: false,
-    lastModified: new Date().toISOString(),
-  },
-  {
-    id: "task-5",
-    title: "Fix task list scrolling issue",
-    details: "Verify task cards remain tappable after enabling scroll behavior.",
-    dueDate: formatDateKey(new Date()),
-    completed: false,
-    lastModified: new Date().toISOString(),
-  },
-  {
-    id: "task-6",
-    title: "Update the daily summary",
-    details: "Add finished items and today's progress to the end-of-day review.",
-    dueDate: formatDateKey(new Date()),
-    completed: false,
-    lastModified: new Date().toISOString(),
-  },
-];
+const initialTasks: Task[] = [];
 
 export function TaskProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
