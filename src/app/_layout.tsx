@@ -3,15 +3,15 @@ import { Stack, useSegments } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Keyboard, Modal, Platform, Pressable, StyleSheet, Text, TextInput, UIManager, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { registerBackgroundSyncTask } from "../services/sync-scheduler";
 import { CreateTaskDateProvider, useCreateTaskDate } from "./create-task-date-context";
 import { formatDateKey } from "./date-utils";
+import { GoogleDriveProvider } from "./google-drive-context";
 import { NotificationProvider } from "./notification-context";
+import { SelectionModeProvider, useSelectionMode } from "./selection-mode-context";
+import { SyncProvider } from "./sync-context";
 import { TaskProvider, useTaskActions } from "./task-context";
 import { ThemeProvider, useTheme } from "./theme-context";
-import { GoogleDriveProvider } from "./google-drive-context";
-import { SyncProvider } from "./sync-context";
-import { SelectionModeProvider, useSelectionMode } from "./selection-mode-context";
-import { registerBackgroundSyncTask } from "../services/sync-scheduler";
 
 function CreateTaskModal({
   visible,

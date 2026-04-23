@@ -6,9 +6,9 @@ import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler
 import { PanGestureHandler, State } from "react-native-gesture-handler";
 import TaskReschedulePicker from "../../components/TaskReschedulePicker";
 import { formatDateKey, parseDateKey, parseSelectedDate } from "../date-utils";
+import { useSelectionMode } from "../selection-mode-context";
 import { useTaskActions, useTasks } from "../task-context";
 import { useTheme } from "../theme-context";
-import { useSelectionMode } from "../selection-mode-context";
 
 function AnimatedTaskCard({ style, children, completed }: { style?: any; children: React.ReactNode; completed: boolean }) {
   const animation = useRef(new Animated.Value(0)).current;
