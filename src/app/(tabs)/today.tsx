@@ -204,15 +204,17 @@ export default function Today() {
   }, [setIsSelectionMode]);
 
   const handleSelectAllPending = useCallback(() => {
-    const pendingTaskIds = tasksForSelectedDate
-      .filter((task) => !task.completed)
+    // Filter directly from the master tasks list using the current date key
+    // to ensure we have the most up-to-date data.
+    const pendingTaskIds = tasks
+      .filter((task) => task.dueDate === selectedDateKey && !task.completed)
       .map((task) => task.id);
 
     if (pendingTaskIds.length > 0) {
       setSelectedTaskIds(new Set(pendingTaskIds));
       setIsSelectionMode(true);
     }
-  }, [tasksForSelectedDate, setIsSelectionMode]);
+  }, [tasks, selectedDateKey, setIsSelectionMode]);
 
   const tasksForSelectedDate = useMemo(() => {
     return tasks
