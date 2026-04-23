@@ -4,6 +4,7 @@ export type Task = {
   details?: string;
   dueDate: string; // YYYY-MM-DD
   completed: boolean;
+  lastModified: string;
 };
 
-export type NewTask = Omit<Task, "id" | "completed">;
+export type NewTask = Omit<Task, "id" | "completed" | "lastModified">;

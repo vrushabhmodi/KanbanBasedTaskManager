@@ -6,10 +6,11 @@ import { NewTask, Task } from "./types";
 type TaskContextType = {
   tasks: Task[];
   addTask: (task: NewTask) => void;
-  updateTask: (taskId: string, changes: Partial<Omit<Task, "id" | "completed">>) => void;
+  updateTask: (taskId: string, changes: Partial<Omit<Task, "id" | "completed" | "lastModified">>) => void;
   toggleTaskCompleted: (taskId: string) => void;
   setTaskDueDate: (taskId: string, dueDate: string) => void;
   deleteTask: (taskId: string) => void;
+  setTasks: (tasks: Task[]) => void;
 };
 
 const TaskContext = createContext<TaskContextType | null>(null);
@@ -22,6 +23,7 @@ const initialTasks: Task[] = [
     details: "Capture the main priorities and schedule tomorrow's follow-up items.",
     dueDate: formatDateKey(new Date()),
     completed: false,
+    lastModified: new Date().toISOString(),
   },
   {
     id: "task-2",
@@ -29,6 +31,7 @@ const initialTasks: Task[] = [
     details: "Check the swipe gestures, date rendering, and tab navigation behavior.",
     dueDate: formatDateKey(new Date()),
     completed: false,
+    lastModified: new Date().toISOString(),
   },
   {
     id: "task-3",
@@ -36,6 +39,7 @@ const initialTasks: Task[] = [
     details: "Draft the agenda, attach files, and set a reminder for the first meeting.",
     dueDate: formatDateKey(new Date()),
     completed: false,
+    lastModified: new Date().toISOString(),
   },
   {
     id: "task-4",
@@ -43,6 +47,7 @@ const initialTasks: Task[] = [
     details: "Confirm the latest color and spacing updates before next sprint.",
     dueDate: formatDateKey(new Date()),
     completed: false,
+    lastModified: new Date().toISOString(),
   },
   {
     id: "task-5",
@@ -50,6 +55,7 @@ const initialTasks: Task[] = [
     details: "Verify task cards remain tappable after enabling scroll behavior.",
     dueDate: formatDateKey(new Date()),
     completed: false,
+    lastModified: new Date().toISOString(),
   },
   {
     id: "task-6",
@@ -57,6 +63,7 @@ const initialTasks: Task[] = [
     details: "Add finished items and today's progress to the end-of-day review.",
     dueDate: formatDateKey(new Date()),
     completed: false,
+    lastModified: new Date().toISOString(),
   },
 ];
 
@@ -70,7 +77,12 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         const savedValue = await AsyncStorage.getItem(TASKS_STORAGE_KEY);
         if (savedValue) {
           const savedTasks = JSON.parse(savedValue) as Task[];
-          setTasks(savedTasks);
+          setTasks(
+            savedTasks.map((task) => ({
+              ...task,
+              lastModified: task.lastModified ?? new Date().toISOString(),
+            }))
+          );
         }
       } catch (error) {
         console.warn("Failed to load tasks from storage", error);
@@ -90,11 +102,21 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     });
   }, [tasks, isReady]);
 
+  const replaceTasks = (nextTasks: Task[]) => {
+    setTasks(
+      nextTasks.map((task) => ({
+        ...task,
+        lastModified: task.lastModified ?? new Date().toISOString(),
+      }))
+    );
+  };
+
   const addTask = (task: NewTask) => {
     setTasks((prevTasks) => [
       {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         completed: false,
+        lastModified: new Date().toISOString(),
         ...task,
       },
       ...prevTasks,
@@ -104,7 +126,9 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const toggleTaskCompleted = (taskId: string) => {
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
+        task.id === taskId
+          ? { ...task, completed: !task.completed, lastModified: new Date().toISOString() }
+          : task
       )
     );
   };
@@ -112,15 +136,19 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const setTaskDueDate = (taskId: string, dueDate: string) => {
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
-        task.id === taskId ? { ...task, dueDate, completed: false } : task
+        task.id === taskId
+          ? { ...task, dueDate, completed: false, lastModified: new Date().toISOString() }
+          : task
       )
     );
   };
 
-  const updateTask = (taskId: string, changes: Partial<Omit<Task, "id" | "completed">>) => {
+  const updateTask = (taskId: string, changes: Partial<Omit<Task, "id" | "completed" | "lastModified">>) => {
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
-        task.id === taskId ? { ...task, ...changes } : task
+        task.id === taskId
+          ? { ...task, ...changes, lastModified: new Date().toISOString() }
+          : task
       )
     );
   };
@@ -130,7 +158,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   };
 
   const value = useMemo(
-    () => ({ tasks, addTask, updateTask, toggleTaskCompleted, setTaskDueDate, deleteTask }),
+    () => ({ tasks, addTask, updateTask, toggleTaskCompleted, setTaskDueDate, deleteTask, setTasks: replaceTasks }),
     [tasks]
   );
 

@@ -1,9 +1,11 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Notifications from "expo-notifications";
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useNotificationSettings } from "../notification-context";
 import { useTheme } from "../theme-context";
+import { useGoogleDrive } from "../google-drive-context";
+import { useSync } from "../sync-context";
 
 type ThemeOption = {
   key: "dark" | "light" | "system";
@@ -35,6 +37,9 @@ export default function SettingsScreen() {
     setEndTime,
     setRepeatIntervalHours,
   } = useNotificationSettings();
+
+  const { isSignedIn, isLoading: isAuthLoading, userEmail, signIn, signOut } = useGoogleDrive();
+  const { isSyncing, lastSyncTime, syncError, autoSyncEnabled, setAutoSyncEnabled, triggerSync } = useSync();
 
   // Sync local input state with setting value
   useEffect(() => {
@@ -203,6 +208,76 @@ export default function SettingsScreen() {
 
         <Text style={[styles.optionDescription, { color: colors.textSecondary, marginTop: 8 }]}>Notifications are only sent between the start and end times, and only if you have pending tasks today.</Text>
       </View>
+
+      <Text style={[styles.subtitle, { color: colors.textSecondary, marginTop: 24 }]}>Google Drive Sync</Text>
+      <View style={[styles.optionsContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+        <View style={styles.optionRow}>
+          <View style={styles.optionTextContainer}>
+            <Text style={[styles.optionTitle, { color: colors.textPrimary }]}>Sync with Google Drive</Text>
+            <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>Back up your tasks and app settings to your Drive account.</Text>
+          </View>
+          {isAuthLoading ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : (
+            <Pressable
+              style={({ pressed }) => [
+                styles.syncButton,
+                { backgroundColor: isSignedIn ? colors.surfaceAlt : colors.accent },
+                pressed && { transform: [{ scale: 0.97 }], opacity: 0.88 },
+              ]}
+              onPress={isSignedIn ? signOut : signIn}
+            >
+              <Text style={[styles.syncButtonText, { color: isSignedIn ? colors.textPrimary : colors.accentText }]}>
+                {isSignedIn ? "Sign out" : "Sign in"}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+
+        {isSignedIn && (
+          <Text style={[styles.optionDescription, { color: colors.textSecondary, marginBottom: 12 }]}>Connected as {userEmail ?? "Google user"}.</Text>
+        )}
+
+        <View style={[styles.optionRow, { paddingVertical: 12 }]}> 
+          <View style={styles.optionTextContainer}>
+            <Text style={[styles.optionTitle, { color: colors.textPrimary }]}>Daily auto sync</Text>
+            <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>When signed in, sync will run automatically once per day.</Text>
+          </View>
+          <Switch
+            value={autoSyncEnabled}
+            onValueChange={setAutoSyncEnabled}
+            trackColor={{ false: colors.border, true: colors.accent }}
+            thumbColor={autoSyncEnabled ? colors.surface : colors.surfaceAlt}
+            disabled={!isSignedIn}
+          />
+        </View>
+
+        {isSignedIn && autoSyncEnabled && (
+          <Text style={[styles.optionDescription, { color: colors.textSecondary, marginBottom: 12, fontStyle: 'italic' }]}>
+            Background sync is enabled and will run daily
+          </Text>
+        )}
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.syncButton,
+            { backgroundColor: colors.accent },
+            pressed && { transform: [{ scale: 0.97 }], opacity: 0.88 },
+          ]}
+          onPress={triggerSync}
+          disabled={!isSignedIn || isSyncing}
+        >
+          <Text style={[styles.syncButtonText, { color: colors.accentText }]}>Sync now</Text>
+        </Pressable>
+
+        {lastSyncTime && (
+          <Text style={[styles.optionDescription, { color: colors.textSecondary, marginTop: 10 }]}>Last synced {new Date(lastSyncTime).toLocaleString()}</Text>
+        )}
+
+        {syncError && (
+          <Text style={[styles.permissionWarning, { color: colors.danger, marginTop: 10 }]}>{syncError}</Text>
+        )}
+      </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -314,6 +389,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   testButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  syncButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  syncButtonText: {
     fontSize: 14,
     fontWeight: "600",
   },

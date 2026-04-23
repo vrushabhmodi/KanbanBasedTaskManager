@@ -55,7 +55,6 @@ export default function TaskReschedulePicker({
   };
 
   const handleMonthChange = (offset: number) => {
-    setMonthDirection(offset);
     Animated.timing(monthAnimation, {
       toValue: 0,
       duration: 160,

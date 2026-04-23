@@ -18,6 +18,7 @@ type NotificationContextType = NotificationSettings & {
   setEndTime: (value: string) => void;
   setRepeatIntervalHours: (value: number) => void;
   permissionGranted: boolean;
+  permissionDenied: boolean;
   permissionStatus: Notifications.PermissionStatus | null;
   scheduledCount: number;
 };
@@ -37,6 +38,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -127,7 +130,7 @@ async function createAndroidChannel() {
       name: "Task reminders",
       importance: Notifications.AndroidImportance.DEFAULT,
       sound: "default",
-      enableVibration: true,
+      enableVibrate: true,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#FF9F1C",
     });
@@ -184,15 +187,10 @@ async function scheduleTaskNotifications(enabled: boolean, repeatEnabled: boolea
 
       return Notifications.scheduleNotificationAsync({
         content: buildNotificationContent(),
-        trigger: Platform.OS === 'android' ? {
-          type: 'daily',
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
           hour,
           minute,
-        } : {
-          type: 'calendar',
-          hour,
-          minute,
-          repeats: true,
         },
       });
     })
@@ -317,6 +315,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       repeatIntervalHours,
       permissionGranted,
       permissionDenied: permissionStatus === Notifications.PermissionStatus.DENIED,
+      permissionStatus,
       scheduledCount,
       setNotificationEnabled: setEnabled,
       setRepeatEnabled,

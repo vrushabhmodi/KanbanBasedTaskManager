@@ -8,6 +8,9 @@ import { formatDateKey } from "./date-utils";
 import { NotificationProvider } from "./notification-context";
 import { TaskProvider, useTaskActions } from "./task-context";
 import { ThemeProvider, useTheme } from "./theme-context";
+import { GoogleDriveProvider } from "./google-drive-context";
+import { SyncProvider } from "./sync-context";
+import { registerBackgroundSyncTask } from "../services/sync-scheduler";
 
 function CreateTaskModal({
   visible,
@@ -214,13 +217,21 @@ function RootLayoutContent() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    registerBackgroundSyncTask();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <CreateTaskDateProvider>
           <TaskProvider>
             <NotificationProvider>
-              <RootLayoutContent />
+              <GoogleDriveProvider>
+                <SyncProvider>
+                  <RootLayoutContent />
+                </SyncProvider>
+              </GoogleDriveProvider>
             </NotificationProvider>
           </TaskProvider>
         </CreateTaskDateProvider>
