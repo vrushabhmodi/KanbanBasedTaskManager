@@ -10,6 +10,7 @@ import { TaskProvider, useTaskActions } from "./task-context";
 import { ThemeProvider, useTheme } from "./theme-context";
 import { GoogleDriveProvider } from "./google-drive-context";
 import { SyncProvider } from "./sync-context";
+import { SelectionModeProvider, useSelectionMode } from "./selection-mode-context";
 import { registerBackgroundSyncTask } from "../services/sync-scheduler";
 
 function CreateTaskModal({
@@ -168,6 +169,7 @@ function RootLayoutContent() {
   const isTaskDetailRoute = segments.includes("task");
   const isCalendarRoute = segments.includes("calender");
   const { calendarSelectedDate } = useCreateTaskDate();
+  const { isSelectionMode } = useSelectionMode();
 
   useEffect(() => {
     if (Platform.OS === "android") {
@@ -190,7 +192,7 @@ function RootLayoutContent() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
 
-      {!isTaskDetailRoute && (
+      {!isTaskDetailRoute && !isSelectionMode && (
         <Pressable
           style={({ pressed }) => [
             styles.fab,
@@ -224,17 +226,19 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
-        <CreateTaskDateProvider>
-          <TaskProvider>
-            <NotificationProvider>
-              <GoogleDriveProvider>
-                <SyncProvider>
-                  <RootLayoutContent />
-                </SyncProvider>
-              </GoogleDriveProvider>
-            </NotificationProvider>
-          </TaskProvider>
-        </CreateTaskDateProvider>
+        <SelectionModeProvider>
+          <CreateTaskDateProvider>
+            <TaskProvider>
+              <NotificationProvider>
+                <GoogleDriveProvider>
+                  <SyncProvider>
+                    <RootLayoutContent />
+                  </SyncProvider>
+                </GoogleDriveProvider>
+              </NotificationProvider>
+            </TaskProvider>
+          </CreateTaskDateProvider>
+        </SelectionModeProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

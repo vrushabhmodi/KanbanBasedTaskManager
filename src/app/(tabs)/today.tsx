@@ -1,13 +1,14 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Animated, Easing, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
 import { PanGestureHandler, State } from "react-native-gesture-handler";
 import TaskReschedulePicker from "../../components/TaskReschedulePicker";
 import { formatDateKey, parseDateKey, parseSelectedDate } from "../date-utils";
 import { useTaskActions, useTasks } from "../task-context";
 import { useTheme } from "../theme-context";
+import { useSelectionMode } from "../selection-mode-context";
 
 function AnimatedTaskCard({ style, children, completed }: { style?: any; children: React.ReactNode; completed: boolean }) {
   const animation = useRef(new Animated.Value(0)).current;
@@ -65,12 +66,16 @@ function AnimatedTaskCard({ style, children, completed }: { style?: any; childre
 export default function Today() {
   const router = useRouter();
   const { tasks } = useTasks();
-  const { toggleTaskCompleted, setTaskDueDate } = useTaskActions();
+  const { toggleTaskCompleted, setTaskDueDate, deleteTask } = useTaskActions();
   const searchParams = useLocalSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(() => parseSelectedDate(searchParams.date) ?? new Date());
   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState(selectedDate);
   const [rescheduleTaskId, setRescheduleTaskId] = useState<string | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [isBulkRescheduleOpen, setIsBulkRescheduleOpen] = useState(false);
+  const [bulkRescheduleDate, setBulkRescheduleDate] = useState(selectedDate);
+  const { isSelectionMode, setIsSelectionMode } = useSelectionMode();
 
   useEffect(() => {
     const routedDate = parseSelectedDate(searchParams.date);
@@ -78,6 +83,19 @@ export default function Today() {
       setSelectedDate(routedDate);
     }
   }, [searchParams.date]);
+
+  // Clear selection when date changes
+  useEffect(() => {
+    setSelectedTaskIds(new Set());
+    setIsSelectionMode(false);
+  }, [formatDateKey(selectedDate), setIsSelectionMode]);
+
+  // Auto-exit selection mode when no tasks are selected
+  useEffect(() => {
+    if (selectedTaskIds.size === 0 && isSelectionMode) {
+      setIsSelectionMode(false);
+    }
+  }, [selectedTaskIds.size, isSelectionMode, setIsSelectionMode]);
 
   const { colors } = useTheme();
   const selectedDateKey = formatDateKey(selectedDate);
@@ -106,6 +124,96 @@ export default function Today() {
     setTaskDueDate(rescheduleTaskId, formatDateKey(rescheduleDate));
     closeReschedule();
   };
+
+  // Selection handlers
+  const handleTaskLongPress = useCallback((taskId: string) => {
+    setIsSelectionMode(true);
+    setSelectedTaskIds((prev) => new Set([...Array.from(prev), taskId]));
+  }, [setIsSelectionMode]);
+
+  const handleTaskTapInSelectionMode = useCallback((taskId: string) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleBulkMarkDone = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    selectedTaskIds.forEach((taskId) => {
+      const task = tasks.find((t) => t.id === taskId);
+      if (task && !task.completed) {
+        toggleTaskCompleted(taskId);
+      }
+    });
+    setSelectedTaskIds(new Set());
+    setIsSelectionMode(false);
+  }, [selectedTaskIds, tasks, toggleTaskCompleted, setIsSelectionMode]);
+
+  const handleBulkDelete = useCallback(() => {
+    Alert.alert(
+      "Delete tasks",
+      `Are you sure you want to delete ${selectedTaskIds.size} task(s)?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            selectedTaskIds.forEach((taskId) => {
+              deleteTask(taskId);
+            });
+            setSelectedTaskIds(new Set());
+            setIsSelectionMode(false);
+          },
+        },
+      ]
+    );
+  }, [selectedTaskIds, deleteTask]);
+
+  const handleBulkRescheduleToTomorrow = useCallback(() => {
+    setIsBulkRescheduleOpen(true);
+    const tomorrow = new Date(selectedDate);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setBulkRescheduleDate(tomorrow);
+  }, [selectedDate]);
+
+  const handleBulkRescheduleConfirm = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    selectedTaskIds.forEach((taskId) => {
+      setTaskDueDate(taskId, formatDateKey(bulkRescheduleDate));
+    });
+    setSelectedTaskIds(new Set());
+    setIsSelectionMode(false);
+    setIsBulkRescheduleOpen(false);
+  }, [selectedTaskIds, bulkRescheduleDate, setTaskDueDate, setIsSelectionMode]);
+
+  const handleBulkRescheduleCancel = useCallback(() => {
+    setIsBulkRescheduleOpen(false);
+  }, []);
+
+  const handleExitSelectionMode = useCallback(() => {
+    setSelectedTaskIds(new Set());
+    setIsSelectionMode(false);
+  }, [setIsSelectionMode]);
+
+  const handleSelectAllPending = useCallback(() => {
+    const pendingTaskIds = tasksForSelectedDate
+      .filter((task) => !task.completed)
+      .map((task) => task.id);
+
+    if (pendingTaskIds.length > 0) {
+      setSelectedTaskIds(new Set(pendingTaskIds));
+      setIsSelectionMode(true);
+    }
+  }, [tasksForSelectedDate, setIsSelectionMode]);
+
   const tasksForSelectedDate = useMemo(() => {
     return tasks
       .filter((task) => task.dueDate === selectedDateKey)
@@ -166,7 +274,25 @@ export default function Today() {
           </Text>
         </View>
 
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Tasks</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Tasks</Text>
+          {tasksForSelectedDate.length > 0 && (
+            <Pressable
+              onPress={handleSelectAllPending}
+              style={({ pressed }) => [
+                {
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                  backgroundColor: colors.surfaceAlt,
+                  opacity: pressed ? 0.7 : 1
+                }
+              ]}
+            >
+              <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '700' }}>Select All Pending</Text>
+            </Pressable>
+          )}
+        </View>
       <ScrollView
         style={styles.taskList}
         contentContainerStyle={styles.taskListContent}
@@ -177,77 +303,154 @@ export default function Today() {
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No tasks for this date yet.</Text>
           </View>
         ) : (
-          tasksForSelectedDate.map((task) => (
-            <AnimatedTaskCard
-              key={task.id}
-              completed={task.completed}
-              style={[
-                styles.taskCard,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-                task.completed && { backgroundColor: colors.surfaceAlt, borderColor: colors.border, opacity: 0.88 },
-              ]}
-            >
-              <Pressable
-                style={({ pressed }) => [{ flex: 1, opacity: pressed ? 0.92 : 1 }]}
-                onPress={() => router.push(`/task/${task.id}`)}
+          tasksForSelectedDate.map((task) => {
+            const isSelected = selectedTaskIds.has(task.id);
+            return (
+              <AnimatedTaskCard
+                key={task.id}
+                completed={task.completed}
+                style={[
+                  styles.taskCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  task.completed && { backgroundColor: colors.surfaceAlt, borderColor: colors.border, opacity: 0.88 },
+                  isSelected && { borderColor: colors.accent, borderWidth: 2 },
+                ]}
               >
-                <View style={styles.taskCardHeader}>
-                  <Text style={[styles.taskTitle, { color: colors.textPrimary }, task.completed && { color: colors.textSecondary }]}> 
-                    {task.title}
-                  </Text>
-                  <View style={styles.taskActions}>
-                    {!task.completed && (
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.actionButton,
-                          { backgroundColor: colors.surfaceAlt },
-                          pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
-                        ]}
-                        onPress={() => openReschedule(task.id)}
-                      >
-                        <MaterialCommunityIcons name="calendar" size={16} color={colors.textPrimary} />
-                      </Pressable>
+                <Pressable
+                  style={({ pressed }) => [{ flex: 1, opacity: pressed ? 0.92 : 1 }]}
+                  onPress={() => {
+                    if (isSelectionMode) {
+                      handleTaskTapInSelectionMode(task.id);
+                    } else {
+                      router.push(`/task/${task.id}`);
+                    }
+                  }}
+                  onLongPress={() => handleTaskLongPress(task.id)}
+                  delayLongPress={300}
+                >
+                  <View style={styles.taskCardHeader}>
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.taskTitleRow}>
+                        {isSelectionMode && (
+                          <View style={[styles.selectionCheckbox, isSelected && { backgroundColor: colors.accent }]}>
+                            {isSelected && (
+                              <MaterialCommunityIcons name="check" size={16} color={colors.background} />
+                            )}
+                          </View>
+                        )}
+                        <Text style={[styles.taskTitle, { color: colors.textPrimary }, task.completed && { color: colors.textSecondary }]}>
+                          {task.title}
+                        </Text>
+                      </View>
+                    </View>
+                    {!isSelectionMode && (
+                      <View style={styles.taskActions}>
+                        {!task.completed && (
+                          <Pressable
+                            style={({ pressed }) => [
+                              styles.actionButton,
+                              { backgroundColor: colors.surfaceAlt },
+                              pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                            ]}
+                            onPress={() => openReschedule(task.id)}
+                          >
+                            <MaterialCommunityIcons name="calendar" size={16} color={colors.textPrimary} />
+                          </Pressable>
+                        )}
+                        {!task.completed && (
+                          <Pressable
+                            style={({ pressed }) => [
+                              styles.actionButton,
+                              styles.tomorrowButton,
+                              { backgroundColor: colors.accentInfo },
+                              pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                            ]}
+                            onPress={() => {
+                              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                              pushToTomorrow(task.id);
+                            }}
+                          >
+                            <MaterialCommunityIcons name="arrow-right" size={16} color={colors.background} />
+                          </Pressable>
+                        )}
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.actionButton,
+                            task.completed ? [styles.undoneButton, { backgroundColor: colors.surfaceAlt }] : [styles.doneButton, { backgroundColor: colors.accentPositive }],
+                            pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                          ]}
+                          onPress={() => {
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            toggleTaskCompleted(task.id);
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name={task.completed ? "undo" : "check"}
+                            size={16}
+                            color={task.completed ? colors.textPrimary : colors.background}
+                          />
+                        </Pressable>
+                      </View>
                     )}
-                    {!task.completed && (
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.actionButton,
-                          styles.tomorrowButton,
-                          { backgroundColor: colors.accentInfo },
-                          pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
-                        ]}
-                        onPress={() => {
-                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                          pushToTomorrow(task.id);
-                        }}
-                      >
-                        <MaterialCommunityIcons name="arrow-right" size={16} color={colors.background} />
-                      </Pressable>
-                    )}
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.actionButton,
-                        task.completed ? [styles.undoneButton, { backgroundColor: colors.surfaceAlt }] : [styles.doneButton, { backgroundColor: colors.accentPositive }],
-                        pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
-                      ]}
-                      onPress={() => {
-                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                        toggleTaskCompleted(task.id);
-                      }}
-                    >
-                      <MaterialCommunityIcons
-                        name={task.completed ? "undo" : "check"}
-                        size={16}
-                        color={task.completed ? colors.textPrimary : colors.background}
-                      />
-                    </Pressable>
                   </View>
-                </View>
-              </Pressable>
-            </AnimatedTaskCard>
-          ))
+                </Pressable>
+              </AnimatedTaskCard>
+            );
+          })
         )}
       </ScrollView>
+
+      {isSelectionMode && (
+        <View style={[styles.bulkActionBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.bulkActionContent}>
+            <Text style={[styles.selectionCountText, { color: colors.textPrimary }]}>
+              {selectedTaskIds.size} selected
+            </Text>
+            <View style={styles.bulkActionButtons}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.bulkActionButton,
+                  { backgroundColor: colors.accentPositive },
+                  pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                ]}
+                onPress={handleBulkMarkDone}
+              >
+                <MaterialCommunityIcons name="check-all" size={18} color={colors.background} />
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.bulkActionButton,
+                  { backgroundColor: colors.accentInfo },
+                  pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                ]}
+                onPress={handleBulkRescheduleToTomorrow}
+              >
+                <MaterialCommunityIcons name="arrow-right" size={18} color={colors.background} />
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.bulkActionButton,
+                  { backgroundColor: colors.danger },
+                  pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                ]}
+                onPress={handleBulkDelete}
+              >
+                <MaterialCommunityIcons name="close" size={18} color={colors.background} />
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.bulkActionButton,
+                  { backgroundColor: colors.surfaceAlt },
+                  pressed && { transform: [{ scale: 0.96 }], opacity: 0.88 },
+                ]}
+                onPress={handleExitSelectionMode}
+              >
+                <MaterialCommunityIcons name="close" size={18} color={colors.textPrimary} />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
 
       <TaskReschedulePicker
         visible={isRescheduleOpen}
@@ -256,6 +459,15 @@ export default function Today() {
         onSelectDate={setRescheduleDate}
         onConfirm={handleRescheduleConfirm}
         onCancel={closeReschedule}
+      />
+
+      <TaskReschedulePicker
+        visible={isBulkRescheduleOpen}
+        selectedDate={bulkRescheduleDate}
+        currentDueDate={selectedDate}
+        onSelectDate={setBulkRescheduleDate}
+        onConfirm={handleBulkRescheduleConfirm}
+        onCancel={handleBulkRescheduleCancel}
       />
     </View>
   </PanGestureHandler>
@@ -327,13 +539,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  taskTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  selectionCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: "#64748B",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
   taskTitle: {
     color: "#F8FAFC",
     fontSize: 16,
     fontWeight: "600",
     flex: 1,
     flexShrink: 1,
-    marginRight: 8,
     marginBottom: 0,
   },
   taskActions: {
@@ -345,6 +571,33 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 12,
     backgroundColor: "#1E293B",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bulkActionBar: {
+    padding: 12,
+    borderTopWidth: 1,
+    borderColor: "#334155",
+  },
+  bulkActionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  selectionCountText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#E2E8F0",
+  },
+  bulkActionButtons: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  bulkActionButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
