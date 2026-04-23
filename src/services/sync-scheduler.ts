@@ -7,12 +7,13 @@ import { Task } from "../app/types";
 
 const BACKGROUND_SYNC_TASK_NAME = "KBTM_BACKGROUND_SYNC";
 const TASKS_STORAGE_KEY = "KBTM_TASKS";
+const DELETED_TASKS_STORAGE_KEY = "KBTM_DELETED_TASKS";
 const NOTIFICATION_STORAGE_KEY = "KBTM_NOTIFICATION_SETTINGS";
 const THEME_STORAGE_KEY = "KBTM_THEME_PREFERENCE";
 const SYNC_SETTINGS_KEY = "KBTM_SYNC_SETTINGS";
 const GOOGLE_AUTH_STORAGE_KEY = "KBTM_GOOGLE_DRIVE_AUTH";
 const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
-const GOOGLE_CLIENT_ID_WEB = "847777426689-a3f579i6464qmvfcpkdp490k8b9jd0on.apps.googleusercontent.com"; // release client ID
+const GOOGLE_CLIENT_ID_ANDROID = "847777426689-a3f579i6464qmvfcpkdp490k8b9jd0on.apps.googleusercontent.com"; // release client ID
 
 type SyncSettings = {
   autoSyncEnabled: boolean;
@@ -27,7 +28,7 @@ type StoredAuthState = {
 async function refreshAccessToken(refreshToken: string): Promise<StoredAuthState | null> {
   try {
     const body = new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID_WEB,
+      client_id: GOOGLE_CLIENT_ID_ANDROID,
       grant_type: "refresh_token",
       refresh_token: refreshToken,
     });
@@ -113,6 +114,9 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK_NAME, async () => {
     const tasksJson = await AsyncStorage.getItem(TASKS_STORAGE_KEY);
     const tasks = tasksJson ? (JSON.parse(tasksJson) as Task[]) : [];
 
+    const deletedIdsJson = await AsyncStorage.getItem(DELETED_TASKS_STORAGE_KEY);
+    const deletedTaskIds = deletedIdsJson ? (JSON.parse(deletedIdsJson) as string[]) : [];
+
     const settingsJson = await AsyncStorage.getItem(NOTIFICATION_STORAGE_KEY);
     const settings = settingsJson
       ? (JSON.parse(settingsJson) as NotificationSyncSettings)
@@ -128,8 +132,12 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK_NAME, async () => {
     const themeValue = themePreference === "dark" || themePreference === "light" || themePreference === "system" ? themePreference : "system";
     const accessToken = authState.accessToken as string;
 
-    const mergedPayload = await syncAppData(accessToken, tasks, settings, themeValue);
-    await AsyncStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(mergedPayload.tasks));
+    const mergedPayload = await syncAppData(accessToken, tasks, settings, themeValue, deletedTaskIds);
+
+    await Promise.all([
+      AsyncStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(mergedPayload.tasks)),
+      AsyncStorage.setItem(DELETED_TASKS_STORAGE_KEY, JSON.stringify(mergedPayload.deletedTaskIds || [])),
+    ]);
 
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch (error) {

@@ -24,7 +24,7 @@ export type SyncContextType = {
 const SyncContext = createContext<SyncContextType | null>(null);
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
-  const { tasks, setTasks } = useTasks();
+  const { tasks, deletedTaskIds, setTasks } = useTasks();
   const {
     enabled,
     repeatEnabled,
@@ -87,33 +87,42 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
     setIsSyncing(true);
     try {
-      const merged = await syncAppData(accessToken, tasks, {
-        enabled,
-        repeatEnabled,
-        startTime,
-        endTime,
-        repeatIntervalHours,
-      }, themePreference);
-      setTasks(merged.tasks);
+      // Use the current state values at the time of the call
+      const merged = await syncAppData(
+        accessToken,
+        tasks,
+        {
+          enabled,
+          repeatEnabled,
+          startTime,
+          endTime,
+          repeatIntervalHours,
+        },
+        themePreference,
+        deletedTaskIds
+      );
+
+      // Update the local state with the results from the cloud
+      setTasks(merged.tasks, merged.deletedTaskIds);
       setLastSyncTime(new Date().toISOString());
     } catch (error) {
       setSyncError(error instanceof Error ? error.message : String(error));
     } finally {
       setIsSyncing(false);
     }
-  }, [enabled, endTime, getAccessToken, isSignedIn, repeatEnabled, repeatIntervalHours, setTasks, startTime, tasks, themePreference]);
+    // We intentionally exclude tasks and deletedTaskIds from the dependency array
+    // to prevent the sync-loop. This callback will be called manually or via
+    // a controlled trigger (like app start).
+  }, [enabled, endTime, getAccessToken, isSignedIn, repeatEnabled, repeatIntervalHours, themePreference]);
 
+  // Only run auto-sync on mount/sign-in change, not every time tasks change
   useEffect(() => {
-    if (!isSignedIn || !autoSyncEnabled) {
+    if (!isSignedIn || !autoSyncEnabled || !isReady) {
       return;
     }
 
-    const syncOnStart = async () => {
-      await triggerSync();
-    };
-
-    syncOnStart();
-  }, [isSignedIn, autoSyncEnabled, triggerSync]);
+    triggerSync();
+  }, [isSignedIn, autoSyncEnabled, isReady]);
 
   const value = useMemo(
     () => ({ isSyncing, lastSyncTime, syncError, autoSyncEnabled, setAutoSyncEnabled, triggerSync }),
